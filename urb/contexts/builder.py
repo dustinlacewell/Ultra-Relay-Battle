@@ -237,9 +237,9 @@ type of input, like an number or a single word. The attribute may be partial.
                     total = char.pstrength + char.pdefense + char.mstrength + char.mdefense
                     max = MAX_CHAR_STAT_TOTAL
                     if char.weakness != 'none':
-                        max += 50
+                        max += WEAKNESS_STAT_DELTA
                     if char.resistance != 'none':
-                        max -= 25
+                        max += RESISTANCE_STAT_DELTA
                     left = max - total
                     newtotal = val
                     if field != 'pstrength': newtotal += char.pstrength

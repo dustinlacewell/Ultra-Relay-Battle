@@ -3,6 +3,7 @@ from axiom.attributes import *
 from urb import contexts, db, commands, validation
 from urb.colors import colorize
 from urb.util import dlog, metadata
+from urb.constants import *
 
 class BuilderContext(contexts.Context):
     """
@@ -234,7 +235,7 @@ type of input, like an number or a single word. The attribute may be partial.
                     self.app.database.change_character_selector(char.selector, val)
                 elif field in ['pstrength', 'pdefense', 'mstrength', 'mdefense']:
                     total = char.pstrength + char.pdefense + char.mstrength + char.mdefense
-                    max = 250
+                    max = MAX_CHAR_STAT_TOTAL
                     if char.weakness != 'none':
                         max += 50
                     if char.resistance != 'none':
@@ -250,13 +251,13 @@ type of input, like an number or a single word. The attribute may be partial.
                         self.app.tell(self.nickname, 
                         "Sorry, this character only has %d points left." % left)
                         return
-                    elif val > 100:
+                    elif val > MAX_CHAR_STAT:
                         self.app.tell(self.nickname,
-                        "The maximum value is 100. '%s' not changed." % field)
+                        "The maximum value is %d. '%s' not changed." % (MAX_CHAR_STAT, field))
                         return
-                    elif val < 25:
+                    elif val < MIN_CHAR_STAT:
                         self.app.tell(self.nickname,
-                        "The minimum value is 25. '%s' Not changed." % field)
+                        "The minimum value is %d. '%s' Not changed." % (MIN_CHAR_STAT, field))
                         return
                 setattr(char, field, val)
                 args['filters'] = attr

@@ -4,6 +4,7 @@ import math
 from urb import contexts, commands, validation
 from urb.colors import colorize
 from urb.util import dlog, metadata
+from urb.constants import *
 
 class BlockCommand(commands.Command):
     def __init__(self, app, player):
@@ -19,6 +20,7 @@ class BlockCommand(commands.Command):
 
 
 class BattleCommand(commands.Command):
+    
     def __init__(self, app, player, move, target, mpcost=0):
         self.app = app
         self.player = player
@@ -34,6 +36,7 @@ class BattleCommand(commands.Command):
     def _get_name(self):
         return self.move.fullname
     name = property(_get_name)
+    
         
     def perform(self):
         targetp = self.app.game.fighters[self.target]
@@ -42,7 +45,7 @@ class BattleCommand(commands.Command):
             st = self.player.character.pstrength
             df = targetp.character.pdefense
             maxhp = self.app.game.settings.maxhealth
-            damage = (maxhp / (150 - power)) * (math.log(st) / df + 10) + random.randrange(-maxhp * 0.01, maxhp * 0.01)
+            damage = calculate_damage(st, df, power, maxhp)
             if targetp.current_move and targetp.current_move.name == 'Block':
                 if random.randint(0, 2) == 0:
                     damage = 0

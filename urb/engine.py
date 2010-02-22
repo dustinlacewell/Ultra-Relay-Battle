@@ -310,10 +310,11 @@ Have fun!"""
         if self.actions:
             for action in list(self.actions):
                 if action[0] <= self.gametime:
-                    action[1].alive = False
-                    action[1].perform()
-                    if action[1].alive == False:
-                        self.actions.remove(action)
+                    if action[1].alive:
+                        action[1].alive = False
+                        action[1].perform()
+                if not action[1].alive:
+                    self.actions.remove(action)
                         
     def start_battle_timers(self):
         self.tick_timer.start(self.tickrate)

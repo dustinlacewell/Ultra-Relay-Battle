@@ -25,6 +25,7 @@ class BattleCommand(commands.Command):
         self.move = move
         self.target = target
         self.mpcost = mpcost
+        self.alive =  True
         
         self.tick_delay = int(self.move.power / 10)
         prepare_msg = self.app.game.parse_message(self.player.nickname, self.move.prepare_msg, target=target)
@@ -165,6 +166,7 @@ class BattleContext(contexts.Context):
         else:
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, theplayer.current_move.name))
             theplayer.ready = True
+            theplayer.current_move.alive = False
             theplayer.current_move = None
             self.app.signals['game_msg'].emit(theplayer.status_msg)
             

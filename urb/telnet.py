@@ -69,7 +69,10 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
 
     def dataReceived(self, data):
         encoding = chardet.detect(data)['encoding']
-        basic.LineReceiver.dataReceived(self, data.decode(encoding))
+        if encoding:
+            basic.LineReceiver.dataReceived(self, data.decode(encoding))
+        else: 
+            basic.LineReceiver.dataReceived(self, data)
 
     def lineReceived(self, line):
         parts = line.split()

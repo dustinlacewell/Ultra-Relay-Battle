@@ -34,7 +34,7 @@ class PreBattleContext(contexts.Context):
             self.app.signals['game_msg'].emit(
             "%s decides not to play as %s" % (self.nickname, theplayer.character.fullname))
             theplayer.character = None
-            theplayer.ready = None
+            theplayer.current_move = None
         elif self.app.game.state in ['prebattle']:
             self.app.tell(self.nickname, "You can't do that now, battle is about to begin!")
 

@@ -22,8 +22,7 @@ class Player(object):
         self.team = 0
         
         self.character = None
-        self.current_move = None
-        self.ready = False
+        self.current_move = "unready"
         self.health = 0
         self.superpoints = 0
         self.magicpoints = 0
@@ -42,17 +41,16 @@ class Player(object):
     def _get_ready(self):
         """Return a boolean whether play is ready."""
         return self.current_move == None
+    ready = property(_get_ready)
     
     def halt(self):
         if self.ready:
             self.app.tell(self.nickname, "You're not doing anything yet!")
         else:
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
-            theplayer.ready = True
+            theplayer.current_move.alive = False
             theplayer.current_move = None
-            self.app.signals['game_msg'].emit(theplayer.status_msg)
-    
-    ready = property(_ready)   
+            self.app.signals['game_msg'].emit(theplayer.status_msg)   
 
 class Session(object):
     """

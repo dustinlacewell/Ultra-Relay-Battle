@@ -50,7 +50,7 @@ Have fun!"""
         return not self.tick_timer.running
         
     def is_ready(self, nickname):
-        return self.gametype.is_ready(self, nickname)
+        return self.fighters[nickname].ready
         
     def is_enemy(self, nickname, targetname):
         theplayer = self.fighters[nickname]
@@ -192,12 +192,12 @@ Have fun!"""
         theplayer = self.app.game.fighters[nickname]
         if theplayer.character:
             if theplayer.ready:
-                theplayer.ready = False
+                theplayer.current_move = "unready"
                 self.app.signals['game_msg'].emit("# ! - %s is no longer ready!" % nickname)
                 self.app.tell(nickname,
                 "You are no longer ready for battle.")
             else:
-                theplayer.ready = True
+                theplayer.current_move = None
                 self.app.tell(nickname,
                 "You are now ready for battle.")
                 if len(self.get_ready()) == len(self.fighters):

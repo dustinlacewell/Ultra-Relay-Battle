@@ -14,8 +14,7 @@ class GameType(object):
         if nickname in self.fighters:
             theplayer = self.fighters[nickname]
             theplayer.character = None
-            theplayer.current_move = None
-            theplayer.ready = False
+            theplayer.current_move = "unready"
             theplayer.health = self.settings.starthealth
             theplayer.magicpoints = self.settings.startmagic
             theplayer.team = self.next_team_id
@@ -98,7 +97,6 @@ class GameType(object):
             "Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (
             thetarget.nickname, thetarget.health))
         theplayer.current_move = None
-        theplayer.ready = True
         winid = _self.check_win_condition(self)
         if winid != None:
             self.app.signals['battle_finish'].emit(winid)

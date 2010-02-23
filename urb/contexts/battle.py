@@ -162,15 +162,7 @@ class BattleContext(contexts.Context):
     def com_halt(_self, self, args):
         """Stop the current move."""
         theplayer = self.app.game.fighters[self.nickname]
-        thechar = theplayer.character
-        if self.app.game.is_ready(self.nickname):
-            self.app.tell(self.nickname,"You're not doing anything yet!")
-        else:
-            self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, theplayer.current_move.name))
-            theplayer.ready = True
-            theplayer.current_move.alive = False
-            theplayer.current_move = None
-            self.app.signals['game_msg'].emit(theplayer.status_msg)
+        theplayer.halt()
             
     def com_moves(_self, self, args):
         """Show a list of moves for your character."""

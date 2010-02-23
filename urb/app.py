@@ -45,6 +45,8 @@ class ApplicationClass(object):
         self.signals['battle_resume'  ] = Signal() #
         self.signals['battle_abort'   ] = Signal() #
         self.signals['battle_finish'  ] = Signal() # 
+        self.signals['battle_command' ] = Signal() # command
+        self.signals['battle_execute' ] = Signal()
         self.signals['battle_damage'  ] = Signal() # nickname, target, damage
 
         self.signals['global_msg'].register(self.on_global_msg)

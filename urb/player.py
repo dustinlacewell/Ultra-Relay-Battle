@@ -37,7 +37,22 @@ class Player(object):
             else:
                 action = "doing '%s'" % (self.current_move.name)
         return "%s is %s : %dHP : %dMP : %dSP" % (self.nickname, action, self.health, self.magicpoints, self.superpoints)
-    status_msg = property(_status_msg)    
+    status_msg = property(_status_msg)
+    
+    def _get_ready(self):
+        """Return a boolean whether play is ready."""
+        return self.current_move == None
+    
+    def halt(self):
+        if self.ready:
+            self.app.tell(self.nickname, "You're not doing anything yet!")
+        else:
+            self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
+            theplayer.ready = True
+            theplayer.current_move = None
+            self.app.signals['game_msg'].emit(theplayer.status_msg)
+    
+    ready = property(_ready)   
 
 class Session(object):
     """

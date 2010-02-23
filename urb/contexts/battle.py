@@ -48,7 +48,6 @@ class BattleCommand(commands.Command):
                     self.app.signals['game_msg'].emit(self.app.game.parse_message(
                         self.target, self.player.character.block_success_msg, self.player.nickname))
                     self.player.current_move = None
-                    self.player.ready = True
                     return
                 else:
                     damage = int(damage * (2 / 3.0))

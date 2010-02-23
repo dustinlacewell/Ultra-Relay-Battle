@@ -343,10 +343,11 @@ class IRCBotFactory(protocol.ReconnectingClientFactory):
         self.stopTrying()
         
     def on_outgoing_msg(self, dest, msg):
-        if dest in self.chats:
-            self.chats[dest].sendLine(msg)
-        elif dest.startswith('#'):
-            self.client.msg(dest, msg)
+        if self.client:
+            if dest in self.chats:
+                self.chats[dest].sendLine(msg)
+            elif dest.startswith('#'):
+                self.client.msg(dest, msg)
             
             
 class IRCService(internet.TCPClient):

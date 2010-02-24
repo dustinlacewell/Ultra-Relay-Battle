@@ -40,6 +40,16 @@ class DataDriver(object):
                             if not hasattr(object, attr):
                                 val = getattr(cp, attr)
                                 setattr(object, attr, val)
+                    elif key == 'Moves':
+                        mp = MoveProfile(object.selector, object.fullname, object.ownerselector)
+                        for attr in MoveProfile.vorder:
+                            if not hasattr(object, attr):
+                                val = getattr(mp, attr)
+                                setattr(object, attr, val)
+                        for attr in ['_info_str', 'info']:
+                            if not hasattr(object, attr):
+                                val = getattr(MoveProfile, attr)
+                                setattr(object, attr, val)
                 
         
 
@@ -120,7 +130,7 @@ class DataDriver(object):
         return [m for m in self.dbroot['Moves'].values() if m.ownerselector == ownerselector]
         
     def get_all_moves(self, selector):
-        return self.dbroot['Moves'].values()
+        return [m for m in self.dbroot['Moves'].values() if m.selector == selector]
     
     def change_move_selector(self, ownerselector, oldselector, newselector):
         m = get_move(oldselector, ownerselector)
@@ -178,6 +188,12 @@ class CharacterProfile( Persistent ):
         self.resistance        = u'none'
         
         self.finalized         = 0
+        
+    def get_gauge(self, attribute):
+        val = getattr(self, attribute)
+        bar = "*" * int(val / 10.0)
+        filler = " " * (10 - len(bar))
+        return "[%s%s]" % (bar, filler)
 
     vschema = { 'selector':'str', 'fullname':'msg', 'description_msg':'msg',
         'selection_msg':'msg', 'block_begin_msg':'msg', 'block_fail_msg':'msg',
@@ -213,6 +229,14 @@ class MoveProfile( Persistent ):
         self.hit_msg          = u''
         self.crit_hit_msg     = u''
         self.supr_hit_msg     = u''   
+        
+    def _info_str(self):
+        return "(%s) %s : %d : %s : %s : %s %s" % (
+                self.selector, self.fullname, self.power, self.element, self.target,
+                "CanSpr+" if self.cansuper else "",
+                "CanCtr+" if self.cancounter else "",
+                )
+    info = property(_info_str)
 
 
     vschema = {'selector':'str', 'fullname':'msg', 'ownerselector':'str',

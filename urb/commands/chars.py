@@ -14,26 +14,33 @@ Get information on a chararcter or character move.
             char = self.args['cselector']
             cselector = char.selector
             if 'mselector' in self.args:
-                move = self.args['mselector']
-                mselector = move.selector
-                self.app.tell(self.player.nickname, 
-                    "%s - %d : %s : %s - CanSpr: %d, CanCtr: %d" % (
-                    move.fullname, move.element, move.target, move.cansuper, move.cancounter))
+                themove = None
+                mselector = None
+                print [move.info for move in self.args['mselector']]
+                for move in self.args['mselector']:
+                    if move.ownerselector == cselector:
+                        themove = move
+                if themove:
+                    mselector = move.selector
+                    self.app.tell(self.player.nickname, themove.info)
+                else:
+                    self.app.tell(self.player.nickname, "'%s' doesn't have that move." %(cselector, ))
             else:
                 moves = self.app.database.get_moves_for(cselector)
                 self.app.tell(self.player.nickname,
                     "%s (%s)" % (char.fullname, char.selector))
-                self.app.tell(self.player.nickname,
-                    "Physical: %d / %d" % (char.pstrength, char.pdefense))
-                self.app.tell(self.player.nickname,
-                    "Magical: %d / %d" % (char.mstrength, char.mdefense))
-                self.app.tell(self.player.nickname, "Weakness: %s" % char.weakness)
-                self.app.tell(self.player.nickname, "Resistance: %s" % char.resistance)
+                self.app.tell(self.player.nickname,"Physical Str: %s" % char.get_gauge('pstrength'))
+                self.app.tell(self.player.nickname,"Physical Def: %s" % char.get_gauge('pdefense'))
+                self.app.tell(self.player.nickname,"Magical Str:  %s" % char.get_gauge('mstrength'))
+                self.app.tell(self.player.nickname,"Magical Def:  %s" % char.get_gauge('mdefense'))
+                if char.weakness != 'none': 
+                    self.app.tell(self.player.nickname, "Is weak to %s effects" % char.weakness)
+                if char.resistance != 'none': 
+                    self.app.tell(self.player.nickname, "Is resistant to %s effects" % char.resistance)
+                self.app.tell(self.player.nickname, "-- Moves " + ("-" * 32))
                 for move in moves:
                     mselector = move.selector
-                    self.app.tell(self.player.nickname, 
-                    "%s - %d : %s : %s - CanSpr: %d, CanCtr: %d" % (
-                    move.fullname, move.element, move.target, move.cansuper, move.cancounter))
+                    self.app.tell(self.player.nickname, move.info)
         else:
             chars = [ char.selector for char in self.app.database.get_all_characters() if char.finalized != 0]
             unfinished = [ char.selector for char in self.app.database.get_all_characters() if char.finalized == 0]

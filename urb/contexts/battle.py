@@ -172,9 +172,6 @@ class BattleContext(contexts.Context):
         self.app.tell(self.nickname,
         "%s's moves are :" % thechar.fullname)
         for move in themoves:
-            self.app.tell(self.nickname, 
-            "%s(%s) , %d , %s , %s , CanSpr:%s, CanCtr:%s" % (
-            move.fullname, move.selector, move.power,
-            move.element, move.target, move.cansuper, move.cancounter))
+            self.app.tell(self.nickname, move.info)
 
 exported_class = BattleContext

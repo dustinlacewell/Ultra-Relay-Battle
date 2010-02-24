@@ -7,11 +7,6 @@ class MainMenuContext(contexts.Context):
     allowed = ['minigames']
     
     def enter(_self, self):
-        self.app.game.on_command(self.nickname, 'all', [])
-    
-    @metadata(adminlevel=commands.PLAYER)
-    def com_minigames(_self, self, args):
-        """Play minigames created during the development of Ultra Relay Battle."""
-        self.switch('minigames')       
+        self.app.game.on_command(self.nickname, 'all', [])   
 
 exported_class = MainMenuContext

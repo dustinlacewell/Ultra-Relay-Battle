@@ -46,15 +46,12 @@ class PreBattleContext(contexts.Context):
         self.app.tell(self.nickname,
         " - The current battle-roster -")
         for nick, player in self.app.game.fighters.iteritems():
-            if player.character:
-                self.app.tell(self.nickname,
-                "%s(%s) - %d HP - Ready: %s" % (
-                nick, player.character.fullname,  player.health, player.ready))
-            else:
-                self.app.tell(self.nickname,
-                "%s(NO CHAR) - %d HP - Ready: %s" % (
-                nick, player.health, player.ready))
-                
+            char = player.character.fullname if player.character else "NO CHAR"
+            self.app.tell(self.nickname,
+            "%s(%s) - %d HP : %d MP : %d SP %s" % (
+            nick, char,  player.health, 
+            player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
+            
     def com_ready(_self, self, args):
         """Toggle whether you're ready for battle to begin."""
         if self.app.game.state in ['prebattle']:

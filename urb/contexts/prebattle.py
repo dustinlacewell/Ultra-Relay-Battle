@@ -24,8 +24,11 @@ class PreBattleContext(contexts.Context):
     @metadata(adminlevel=commands.PLAYER, schema=(('char','selector'),))
     def com_pick(_self, self, args):
         """Pick a character to fight with."""
-        self.app.signals['choose'].emit(self.nickname, args['selector'].selector)
-        self.app.tell(self.nickname, "Make sure to 'ready' up if you're prepared for battle.")
+        if args['selector'].finalized == 0:
+            self.app.tell(self.nickname, "'%s' is not a valid character selector." % args['selector'].selector)
+        else:
+            self.app.signals['choose'].emit(self.nickname, args['selector'].selector)
+            self.app.tell(self.nickname, "Make sure to 'ready' up if you're prepared for battle.")
         
     def com_oops(_self, self, args):
         """Forget your current character selection."""

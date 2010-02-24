@@ -260,6 +260,8 @@ type of input, like an number or a single word. The attribute may be partial.
                         "The minimum value is %d. '%s' Not changed." % (MIN_CHAR_STAT, field))
                         return
                 setattr(char, field, val)
+                if field != 'finalized':
+                    char.finalized = 0
                 args['filters'] = attr
                 _self.com_lsc(self, args)
         else:
@@ -315,6 +317,7 @@ attribute may be partial.
 #                                "Cannot set element to '%s' when target is '%s'." % (val, themove.target))
 #                                return
                     setattr(themove, field, val)
+                    char.finalized = 0
                     args['filters'] = attr
                     _self.com_lsm(self, args)
 

@@ -34,6 +34,12 @@ class DataDriver(object):
                             if not hasattr(object, attr):
                                 val = getattr(gs, attr)
                                 setattr(object, attr, val)
+                    elif key == 'Characters':
+                        cp = CharacterProfile(object.selector, object.fullname)
+                        for attr in CharacterProfile.vorder:
+                            if not hasattr(object, attr):
+                                val = getattr(cp, attr)
+                                setattr(object, attr, val)
                 
         
 
@@ -170,19 +176,21 @@ class CharacterProfile( Persistent ):
 
         self.weakness          = u'none'
         self.resistance        = u'none'
+        
+        self.finalized         = 0
 
     vschema = { 'selector':'str', 'fullname':'msg', 'description_msg':'msg',
         'selection_msg':'msg', 'block_begin_msg':'msg', 'block_fail_msg':'msg',
         'block_success_msg':'msg', 'rest_msg':'msg', 'kill_msg':'msg',
         'fatality_msg':'msg', 'death_msg':'msg', 'taunt_msg':'msg',
         'pstrength':'int', 'pdefense':'int', 'mstrength':'int',
-        'mdefense':'int', 'weakness':'str', 'resistance':'str'}
+        'mdefense':'int', 'weakness':'str', 'resistance':'str', 'finalized':'int'}
 
     vorder = ( 'selector', 'fullname', 'resistance', 'weakness',
         'pstrength', 'pdefense', 'mstrength', 'mdefense', 
         'description_msg', 'selection_msg', 'block_begin_msg', 
         'block_fail_msg', 'block_success_msg', 'rest_msg', 'kill_msg',
-        'fatality_msg', 'death_msg', 'taunt_msg')
+        'fatality_msg', 'death_msg', 'taunt_msg', 'finalized')
 
 
 

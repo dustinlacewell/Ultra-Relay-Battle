@@ -36,7 +36,7 @@ See INFO for: commands, contexts
                 for line in context.__doc__.split('\n'):
                     self.app.tell(self.player.nickname, line)
                 self.app.tell(self.player.nickname,
-                "- The following commands are available -")
+                "- The following commands are available ('all' for more) -")
                 available = commands.get_allowed(self.player, all=False)
                 available = ['help', 'all'] + available
                 available = ", ".join(available)

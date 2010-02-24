@@ -48,9 +48,9 @@ class Player(object):
             self.app.tell(self.nickname, "You're not doing anything yet!")
         else:
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
-            theplayer.current_move.alive = False
-            theplayer.current_move = None
-            self.app.signals['game_msg'].emit(theplayer.status_msg)   
+            self.current_move.alive = False
+            self.current_move = None
+            self.app.signals['game_msg'].emit(self.status_msg)   
 
 class Session(object):
     """

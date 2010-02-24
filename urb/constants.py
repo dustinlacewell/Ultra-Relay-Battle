@@ -1,4 +1,4 @@
-import math
+import math, random
 
 #===============================================================================
 # MIN_CHAR_PHYS_STR = 25
@@ -33,6 +33,7 @@ MAX_MOVE_POWER = 100
 BFACTOR = 1.09
 LOW_END_FRACTION = 1/32.0
 HIGH_END_FRACTION = 1/8.0
+CRITICAL_POWER_FACTOR = 1.5
 
 def f(x):
    return (x-float(MIN_CHAR_STAT - 1.0)) ** BFACTOR + float(MIN_CHAR_STAT - 1.0)
@@ -47,3 +48,7 @@ def calculate_damage(attack, defense, power, maxhp):
     base = maxhp * ( HIGH_END_FRACTION*(power/float(MAX_MOVE_POWER)) + LOW_END_FRACTION*(1-(power/float(MAX_MOVE_POWER))) ) 
     multi = challenge_factor(attack, defense)
     return base * multi
+
+def is_critical(st, df):
+    chance = challenge_factor(st, df) * 10
+    return (random.random() * 100) <= chance 

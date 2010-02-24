@@ -21,16 +21,21 @@ class BlockCommand(commands.Command):
 
 class BattleCommand(commands.Command):
     
-    def __init__(self, app, player, move, target, mpcost=0):
+    def __init__(self, app, player, move, target, mpcost=0, super=0):
         self.app = app
         self.player = player
         self.move = move
         self.target = target
         self.mpcost = mpcost
+        self.super = super
         self.alive =  True
         
         self.tick_delay = int(self.move.power / 10)
-        prepare_msg = self.app.game.parse_message(self.player.nickname, self.move.prepare_msg, target=target)
+        if super:
+            prepare_msg = self.app.game.parse_message(self.player.nickname, self.move.supr_prepare_msg, target=target)
+            prepare_msg = ("L%d SUPER ~ " % super) + prepare_msg
+        else:
+            prepare_msg = self.app.game.parse_message(self.player.nickname, self.move.prepare_msg, target=target)
         self.app.signals['game_msg'].emit(prepare_msg)
         
     def _get_name(self):
@@ -39,35 +44,7 @@ class BattleCommand(commands.Command):
     
         
     def perform(self):
-        targetp = self.app.game.fighters[self.target]
-        if self.move.element == "physical":
-            power = self.move.power
-            st = self.player.character.pstrength
-            df = targetp.character.pdefense
-            maxhp = self.app.game.settings.maxhealth
-            damage = calculate_damage(st, df, power, maxhp)
-            if targetp.current_move and targetp.current_move.name == 'Block':
-                if random.randint(0, 2) == 0:
-                    damage = 0
-                    self.app.signals['game_msg'].emit(self.app.game.parse_message(
-                        self.target, self.player.character.block_success_msg, self.player.nickname))
-                    self.player.current_move = None
-                    return
-                else:
-                    damage = int(damage * (2 / 3.0))
-                    self.app.signals['game_msg'].emit(self.app.game.parse_message(
-                        self.target, self.player.character.block_fail_msg, self.player.nickname))
-
-            self.app.signals['battle_damage'].emit(
-                self.player.nickname, self.target, damage) # int(self.move.power / 10))
-        else:
-            self.player.magicpoints -= self.mpcost
-            if self.move.element == "heal":
-                power = self.move.power
-                st = self.player.character.pstrength
-                maxhp = self.app.game.settings.maxhealth
-                healing = (maxhp / (200 - power)) * (math.log(st) / 80 + 10) + random.randrange(-maxhp * 0.01, maxhp * 0.01)
-                self.app.signals['battle_damage'].emit(self.player.nickname, self.target, -healing)
+        self.app.signals['battle_execute'].emit(self)
 
 class BattleContext(contexts.Context):
     """You're in battle!"""    
@@ -76,6 +53,18 @@ class BattleContext(contexts.Context):
         theplayer = self.app.game.fighters[self.nickname]
         thechar = theplayer.character
         themoves = self.app.database.get_moves_for(thechar.selector)
+        super = 0
+        if '*' in command:
+            try:
+                command, super = command.split('*')
+                super = int(super)
+                if super > self.app.game.settings.maxsuperlevel:
+                    self.app.tell(self.player.nickname, "The max super-level is currently: %d" % self.app.game.settings.maxsuperlevel)
+                    return True
+            except:
+                self.app.tell(self.nickname,
+                   "Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
+
         for move in themoves:
             if move.selector == command:
                 if self.app.game.is_paused():
@@ -113,16 +102,22 @@ class BattleContext(contexts.Context):
                         self.app.tell(self.nickname, e.message)
                         return True
                     else:
+                        if super > 0:
+                            if not move.cansuper:
+                                self.app.tell(self.nickname, "The '%s' move can't be supered." % (move.fullname))
+                                return True
+                            if theplayer.superpoints < super * 100:
+                                self.app.tell(self.nickname, "You don't have enough Super to do a level %d '%s'!" % (super, move.fullname))
+                                return True
+
                         mpcost = 0
                         if move.element != 'physical':
                             mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
                             if theplayer.magicpoints < mpcost:
                                 self.app.tell(self.nickname, "You don't have enough Magic to do '%s'!" % move.fullname)
                                 return True
-                        bcommand = BattleCommand(self.app, theplayer, move, target, mpcost)
-                        theplayer.current_move = bcommand
-                        do_time = self.app.game.gametime + bcommand.tick_delay
-                        self.app.game.actions.append( (do_time, bcommand) )
+                        bcommand = BattleCommand(self.app, theplayer, move, target, mpcost, super)
+                        self.app.signals['battle_command'].emit(bcommand)
                         return True
                     
     def com_exit(_self, self, args):

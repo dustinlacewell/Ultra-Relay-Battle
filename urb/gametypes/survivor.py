@@ -1,7 +1,7 @@
 from urb.gametypes import GameType
 
 class Survivor(GameType):
-    name = "Survivor"
+    name = "survivor"
 
     def on_battle_finish(_self, self, winid):
         team = self.get_team(winid)

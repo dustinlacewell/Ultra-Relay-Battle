@@ -155,7 +155,7 @@ Have fun!"""
                 self.fighters[nickname] = newplayer
         else:
             self.players[nickname] = newplayer
-        player_count = len(self.players)
+        player_count = len(self.players) - 1
         motd = self.motd % (nickname, player_count)
         for line in motd.split("\n"):
             self.app.tell(nickname, line)

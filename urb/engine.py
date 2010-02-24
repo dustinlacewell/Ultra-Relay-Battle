@@ -167,12 +167,15 @@ Have fun!"""
         if nickname in self.fighters:
             self.on_forfeit(nickname)
         
-    def on_signup(self, nickname):
+    def on_signup(self, nickname, character):
         if nickname in self.players:
             theplayer = self.players[nickname]
             self.fighters[nickname] = theplayer
             
             self.gametype.on_prep_player(self, nickname)
+            print character
+            if character:
+                self.app.signals['choose'].emit(nickname, character.selector)
             
     def on_forfeit(self, nickname):
         if nickname in self.fighters:

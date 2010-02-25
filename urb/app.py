@@ -32,9 +32,8 @@ class ApplicationClass(object):
         self.signals['debug_msg'      ] = Signal() # message
         self.signals['login'          ] = Signal() # nickname
         self.signals['logout'         ] = Signal() # nickname
-        self.signals['context'        ] = Signal() # nickname, context
-        self.signals['command'        ] = Signal() # nickname, command, args
-        self.signals['signup'         ] = Signal() # nickname
+        self.signals['command'        ] = Signal() # player, command, args
+        self.signals['signup'         ] = Signal() # player
         self.signals['forfeit'        ] = Signal() # nickname
         self.signals['choose'         ] = Signal() # nickname, selector
         self.signals['ready'          ] = Signal() # nickname
@@ -129,10 +128,11 @@ class ApplicationClass(object):
         if svc:
             return IService(svc.running)
             
-    def tell(self, nickname, message):
-        return self.signals['outgoing_msg'].emit(nickname, message)
+    def tell(self, player, message):
+        return self.signals['outgoing_msg'].emit(player.nickname, message)
 
     def do_command(self, nickname, command, args):
-        self.signals['command'].emit(nickname, command, args)
-        self.database.commit()
+        if nickname in self.game.players:
+            self.signals['command'].emit(self.game.players[nickname], command, args)
+            self.database.commit()
     

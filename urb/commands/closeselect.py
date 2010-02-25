@@ -11,13 +11,13 @@ Close character selection so battle may begin.
 
     def perform(self):
         if self.app.game.state == "idle":
-            self.app.tell(self.player.nickname,
+            self.app.tell(self.player,
             "Character selection isn't open.")
         elif self.app.game.state == "prebattle":
-            self.app.tell(self.player.nickname,
+            self.app.tell(self.player,
             "Character selection already closed.")
         elif self.app.game.state == "battle":
-            self.app.tell(self.plaer.nickname,
+            self.app.tell(self.player,
             "You can't open selection during battle.")
         else:
             self.app.signals['close_selection'].emit()

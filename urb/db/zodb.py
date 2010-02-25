@@ -227,6 +227,7 @@ class MoveProfile( Persistent ):
         self.prepare_msg      = u''
         self.supr_prepare_msg = u''
         self.hit_msg          = u''
+        self.miss_msg         = u''
         self.crit_hit_msg     = u''
         self.supr_hit_msg     = u''   
         

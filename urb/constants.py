@@ -52,3 +52,9 @@ def calculate_damage(attack, defense, power, maxhp):
 def is_critical(st, df):
     chance = challenge_factor(st, df) * 10
     return (random.random() * 100) <= chance 
+
+
+#
+# Elements
+#
+elements = ['physical', 'heal', 'hpdrain', 'spdrain', 'reveal', 'demi']

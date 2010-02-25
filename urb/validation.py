@@ -19,6 +19,7 @@
     """
 
 from urb.commands import get_name
+from urb.constants import elements
 
 from urb.util import dlog, dtrace
 
@@ -57,8 +58,6 @@ def floating(app, name, argsleft):
 def string(app, name, argsleft):
     """An ordinary string argument."""
     return unicode(argsleft.pop(0)), argsleft
-
-elements = ['physical', 'heal', 'hpdrain', 'mpdrain', 'spdrain', 'reveal', 'demi']
 
 def element(app, name, argsleft):
     """Validate argument to an element."""

@@ -12,11 +12,11 @@ class Player(object):
     but also the user's command session.
     """
     
-    def __init__(self, nickname, session, app):
+    def __init__(self, nickname, app):
         self.nickname = nickname
         self.app = app
         self.db = app.database
-        self.session = session        
+        self.session = None        
         self.user = self.db.get_user(nickname)
         
         self.team = 0
@@ -26,6 +26,18 @@ class Player(object):
         self.health = 0
         self.superpoints = 0
         self.magicpoints = 0
+        
+    def __str__(self):
+        return self.nickname
+    
+    def __repr__(self):
+        return self.nickname
+    
+    def __hash__(self):
+        return hash(self.nickname)
+    
+    def __eq__(self, obj):
+        return hash(self.nickname) == hash(obj)
         
     def _status_msg(self):
         """Generate in-game status message"""
@@ -45,7 +57,7 @@ class Player(object):
     
     def halt(self):
         if self.ready:
-            self.app.tell(self.nickname, "You're not doing anything yet!")
+            self.app.tell(self, "You're not doing anything yet!")
         else:
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
             self.current_move.alive = False
@@ -61,8 +73,8 @@ class Session(object):
     
     TODO: Update to maintain session after disconnect.
     """
-    def __init__(self, nickname, app):
-        self.nickname = nickname
+    def __init__(self, player, app):
+        self.player = player
         self.app = app
         self.context = None
         self.context_name = None

@@ -20,7 +20,7 @@ their help information and schema lines.
                 
             fobj.write("-"*79 + "\n")
         fobj.close()
-        self.app.tell(self.player.nickname, 
+        self.app.tell(self.player, 
         "%d commands dumped to %s" % (len(allcomobj), self.args['filename']))
 
 exported_class = DumpAllCommand

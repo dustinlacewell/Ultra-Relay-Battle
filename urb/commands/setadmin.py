@@ -12,7 +12,7 @@ Set the administration level for a particular user.
     def perform(self):
         user = self.args['nickname']
         user.adminlevel = self.args['adminlevel']
-        self.app.tell(self.player.nickname, 
+        self.app.tell(self.player, 
             "%s's adminlevel now set to %d" % (user.nickname, self.args['adminlevel']))
         self.alive = False
 

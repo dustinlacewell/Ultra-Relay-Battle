@@ -45,7 +45,20 @@ class BattleCommand(commands.Command):
         
     def perform(self):
         self.app.signals['battle_execute'].emit(self)
-
+        
+        if self.target.health <= 0:
+            death_msg = self.parse_message(self.target, self.target.character.death_msg, self.player)
+            self.app.signals['game_msg'].emit(death_msg)
+            self.app.signals['game_msg'].emit(
+            "Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (
+            target, target.health))
+        winid = self.app.game.check_win_condition()
+        if winid != None:
+            self.app.signals['battle_finish'].emit(winid)
+        else:
+            self.player.current_move = None
+            self.app.signals['game_msg'].emit(self.player.status_msg)
+            
 class BattleContext(contexts.Context):
     """You're in battle!"""    
     

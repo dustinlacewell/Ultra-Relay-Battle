@@ -58,3 +58,5 @@ def is_critical(st, df):
 # Elements
 #
 elements = ['physical', 'heal', 'hpdrain', 'spdrain', 'reveal', 'demi']
+
+MAX_DEMI_RATIO = 0.85

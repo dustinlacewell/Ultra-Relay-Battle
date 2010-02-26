@@ -243,12 +243,12 @@ class MoveProfile( Persistent ):
     vschema = {'selector':'str', 'fullname':'msg', 'ownerselector':'str',
         'power':'int', 'element':'element', 'target':'str', 'cansuper':'int',
         'cancounter':'int', 'effectchances':'msg', 'prepare_msg':'msg',
-        'supr_prepare_msg':'msg', 'hit_msg':'msg', 'crit_hit_msg':'msg',
-        'supr_hit_msg':'msg'}
+        'supr_prepare_msg':'msg', 'hit_msg':'msg', 'miss_msg':'msg',
+        'crit_hit_msg':'msg', 'supr_hit_msg':'msg'}
 
     vorder = ('selector', 'fullname', 'ownerselector', 'power', 'target',
         'element', 'cansuper', 'cancounter', 'prepare_msg', 'supr_prepare_msg',
-        'hit_msg', 'crit_hit_msg', 'supr_hit_msg', 'effectchances') 
+        'hit_msg', 'miss_msg', 'crit_hit_msg', 'supr_hit_msg', 'effectchances') 
 
 class GameSettings( Persistent ):
     def __init__(self):

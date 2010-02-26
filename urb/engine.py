@@ -45,6 +45,9 @@ Have fun!"""
     def _get_settings(self):
         return self.app.database.get_gametype(self.gametype.name)
     settings = property(_get_settings)
+    
+    def check_win_condition(self):
+        return self.gametype.check_win_condition(self)
             
     def is_paused(self):
         return not self.tick_timer.running

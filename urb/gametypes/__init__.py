@@ -122,7 +122,6 @@ class GameType(object):
                 healing = calculate_damage(strength, 25, power, maxhp) + int(random.randrange(-maxhp * 0.03, maxhp * 0.03))
                 self.app.signals['battle_damage'].emit(bcomm.player, bcomm.target, -healing)
             elif bcomm.move.element == "demi":
-                maxhp = self.settings.maxhealth
                 targethp = bcomm.target.health
                 ratio = targethp / float(maxhp)
                 ratio = min(MAX_DEMI_RATIO, ratio)
@@ -132,6 +131,13 @@ class GameType(object):
                 else:
                     self.app.signals['game_msg'].emit(self.parse_message(
                         bcomm.player, bcomm.move.miss_msg, bcomm.target))
+            elif bcomm.move.element == "hpdrain":
+                damage = calculate_damage(strength, defense, power, maxhp)+ int(random.randrange(-maxhp * 0.01, maxhp * 0.01))
+                stolen = damage * (challenge_factor(strength, defense) - 1)
+                bcomm.player.health += stolen
+                bcomm.player.health = min(self.app.game.settings.maxhealth, bcomm.player.health)
+                self.app.signals['battle_damage'].emit(bcomm.player, bcomm.target, damage)
+                
         
     def on_battle_damage(_self, self, player, target, damage, critdmg=0):
         totaldmg = damage + critdmg
@@ -172,7 +178,9 @@ class GameType(object):
         self.app.signals['game_msg'].emit(hit_msg)
         # Element Specific Descriptions
         if player.current_move.move.element == "demi":
-            self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)       
+            self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)   
+        elif player.current_move.move.element == "hpdrain":
+            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))    
         
     def on_defect(_self, self):
         pass

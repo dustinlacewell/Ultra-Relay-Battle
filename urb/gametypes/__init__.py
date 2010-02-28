@@ -16,22 +16,6 @@ def get( gametype_name ):
     return imports.get('gametypes', gametype_name)
 
 class GameEngine(object):
-    motd = """
-Welcome to Ultra Relay Battle :
-
-You have succesfully logged in as %s. 
-There are currently %d other players online.
-If you need help getting started feel free to visit the URB website at
-http://ldlework.com/wiki/urb . The main channel #urb is also good for asking
-questions and getting to know people. You can see what commands are available
-to you at any time by issuing the 'help' command.
-
-If you're interested in helping the development of URB please write to:
-
-                     dlacewell@gmail.com
-    
-Have fun!"""
-
     name = 'survivor'
 
     def __init__(self, app):
@@ -207,19 +191,15 @@ Have fun!"""
             if player.ready:
                 player.current_move = "unready"
                 self.app.signals['game_msg'].emit("# ! - %s is no longer ready!" % player.nickname)
-                self.app.tell(player,
-                "You are no longer ready for battle.")
+                self.player.tell("You are no longer ready for battle.")
             else:
                 player.current_move = None
-                self.app.tell(player,
-                "You are now ready for battle.")
+                self.player.tell("You are now ready for battle.")
                 if len(self.get_ready()) == len(self.fighters):
                     self.app.signals['game_msg'].emit("## All players are READY! ##")
         else:
-            self.app.tell(player,
-            "You cannot 'ready' until you 'pick' a character.")
-            self.app.tell(player,
-            "Use 'chars' to get a list of available characters.")
+            self.player.tell("You cannot 'ready' until you 'pick' a character.")
+            self.player.tell("Use 'chars' to get a list of available characters.")
             
     def process_battle_input(self, player, command, args):
         thechar = player.character
@@ -230,30 +210,25 @@ Have fun!"""
                 command, super = command.split('*')
                 super = int(super)
             except:
-                self.app.tell(player,
-                   "Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
+                self.player.tell("Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
         themove = Move.get(selector=command)
         if themove in thechar.moves:
             # Check if battle is paused               
             if self.is_paused():
-                self.app.tell(player,
-                "The battle is paused, you'll have to wait to '%s'." % command)
+                self.player.tell("The battle is paused, you'll have to wait to '%s'." % command)
                 return True
             # Check if player is alive
             elif player.health <= 0:
-                self.app.tell(player,
-                "You can't do '%s' when you're DEAD!" % themove.fullname)
+                self.player.tell("You can't do '%s' when you're DEAD!" % themove.fullname)
                 return True
             # Check if player is ready
             elif not player.ready:
                 if player.current_move.target:
-                    self.app.tell(player,
-                    "You can't do '%s' while you're doing '%s' on %s." % (
+                    self.player.tell("You can't do '%s' while you're doing '%s' on %s." % (
                     command, player.current_move.name,
                     player.current_move.target))
                 else:
-                    self.app.tell(player,
-                    "You can't do '%s' while you're doing '%s'." % (
+                    self.player.tell("You can't do '%s' while you're doing '%s'." % (
                     command, player.current_move.name))
                 return True
             # Player is ready
@@ -263,34 +238,33 @@ Have fun!"""
                 if not targetname:
                     targetname = self.find_target(player, themove.target).nickname
                     if not targetname:
-                        self.app.tell(player,
-                        "You couldn't find a valid target!")
+                        self.player.tell("You couldn't find a valid target!")
                         return True
                # Validate the target against move-type
                 try:
                     target = self.fighters[targetname]
                     self.validate_target(player, target, themove)
                 except validation.ValidationError, e:
-                    self.app.tell(player, e.message)
+                    self.player.tell(e.message)
                     return True
                 else:
                     # Validate super usage
                     if super > 0:
                         if not themove.cansuper:
-                            self.app.tell(player, "The '%s' move can't be supered." % (themove.fullname))
+                            self.player.tell("The '%s' move can't be supered." % (themove.fullname))
                             return True
                         if player.superpoints < super * 100:
-                            self.app.tell(player, "You don't have enough Super to do a level %d '%s'!" % (super, themove.fullname))
+                            self.player.tell("You don't have enough Super to do a level %d '%s'!" % (super, themove.fullname))
                             return True
                         if super > self.settings.maxsuperlevel:
-                            self.app.tell(player, "The max super-level is currently: %d" % self.settings.maxsuperlevel)
+                            self.player.tell("The max super-level is currently: %d" % self.settings.maxsuperlevel)
                             return True
                     # Validate magic usage
                     mpcost = 0
                     if themove.element != 'physical':
                         mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
                         if player.magicpoints < mpcost:
-                            self.app.tell(player, "You don't have enough Magic to do '%s'!" % move.fullname)
+                            self.player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
                             return True
                     # Queue the battle command
                     bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, mpcost, super)
@@ -342,8 +316,7 @@ Have fun!"""
                 "##    Waiting for all players to READY.   ##")
                 unready = self.get_unready()
                 for theplayer in unready:
-                    self.app.tell(theplayer,
-                        "!! Battle is waiting on you to, 'ready' !!")
+                    self.player.tell("!! Battle is waiting on you to, 'ready' !!")
         
     def on_battle_start(self):
         if self.state == "prebattle":
@@ -352,8 +325,7 @@ Have fun!"""
                 self.app.signals['game_msg'].emit(
                 "%s was dropped from the battle." % player)
                 self.on_forfeit(player)
-                self.app.tell(player,
-                "You were dropped from battle for not being ready.")
+                self.player.tell("You were dropped from battle for not being ready.")
             for nickname, player in self.fighters.iteritems():
                 player.session.switch('battle')
             self.app.signals['game_msg'].emit(
@@ -374,8 +346,7 @@ Have fun!"""
         "**** BATTLE HAS BEEN ABORTED ****")
         for nick, player in list(self.fighters.iteritems()):
             self.on_forfeit(player)
-            self.app.tell(player,
-            "**** BATTLE HAS BEEN ABORTED ****")
+            self.player.tell("**** BATTLE HAS BEEN ABORTED ****")
         
     def on_battle_finish(self, winid):
         team = self.get_team(winid)

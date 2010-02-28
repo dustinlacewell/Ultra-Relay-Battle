@@ -12,11 +12,9 @@ Sign up for battle and choose a character!
     def perform(self):
         if self.app.game:
             if self.app.game.state == "selection":
-                self.app.tell(self.player,
-                "Character selection is already open.")
+                self.player.tell("Character selection is already open.")
             elif self.app.game.state == "battle":
-                self.app.tell(self.player,
-                "You can't open selection during battle.")
+                self.player.tell("You can't open selection during battle.")
             else:
                 self.app.game.on_open_selection()
         else:
@@ -25,15 +23,14 @@ Sign up for battle and choose a character!
                 if gtype:
                     self.app.set_game(gtype)
                 else:
-                    self.app.tell(self.player,
-                    "No such gametype exists.")
+                    self.player.tell("No such gametype exists.")
             else:
                 print dir(gametypes)
                 gtype = gametypes.get('survivor')
                 if gtype:
                     self.app.set_game(gtype)
                 else:
-                    self.app.tell(self.player, "# Missing 'gametype' parameter. (1:str)")
+                    self.player.tell("# Missing 'gametype' parameter. (1:str)")
 
             
 exported_class = OpenSelectionCommand

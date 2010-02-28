@@ -23,43 +23,41 @@ Get information on a chararcter or character move.
                         themove = move
                 if themove:
                     mselector = move.selector
-                    self.app.tell(self.player, themove.info)
+                    self.player.tell(themove.info)
                 else:
-                    self.app.tell(self.player, "'%s' doesn't have that move." %(cselector, ))
+                    self.player.tell("'%s' doesn't have that move." %(cselector, ))
             else:
                 moves = char.moves
-                self.app.tell(self.player,
-                    "%s (%s)" % (char.fullname, char.selector))
-                self.app.tell(self.player,"Physical Str: %s" % char.get_gauge('pstrength'))
-                self.app.tell(self.player,"Physical Def: %s" % char.get_gauge('pdefense'))
-                self.app.tell(self.player,"Magical Str:  %s" % char.get_gauge('mstrength'))
-                self.app.tell(self.player,"Magical Def:  %s" % char.get_gauge('mdefense'))
+                self.player.tell("%s (%s)" % (char.fullname, char.selector))
+                self.player.tell("Physical Str: %s" % char.get_gauge('pstrength'))
+                self.player.tell("Physical Def: %s" % char.get_gauge('pdefense'))
+                self.player.tell("Magical Str:  %s" % char.get_gauge('mstrength'))
+                self.player.tell("Magical Def:  %s" % char.get_gauge('mdefense'))
                 if char.weakness != 'none': 
-                    self.app.tell(self.player, "Is weak to %s effects" % char.weakness)
+                    self.player.tell("Is weak to %s effects" % char.weakness)
                 if char.resistance != 'none': 
-                    self.app.tell(self.player, "Is resistant to %s effects" % char.resistance)
-                self.app.tell(self.player, "-- Moves " + ("-" * 32))
+                    self.player.tell("Is resistant to %s effects" % char.resistance)
+                self.player.tell("-- Moves " + ("-" * 32))
                 for move in moves:
                     mselector = move.selector
-                    self.app.tell(self.player, move.info)
+                    self.player.tell( move.info)
         else:
             chars = [ char.selector for char in Character.all() if char.finalized != 0]
             unfinished = [ char.selector for char in Character.all() if char.finalized == 0]
-            self.app.tell(self.player,
-            "Ultra Relay Battle - Character listing :")
+            self.player.tell("Ultra Relay Battle - Character listing :")
             send = ""
             for char in chars:
                 oldsend = send
                 send = "%s%s " % (send, ("'%s' " % char))
                 if len(send) >= 255:
-                    self.app.tell(self.player, oldsend)
+                    self.player.tell(oldsend)
                     send = ("%s " % char)
                 elif len(send) >= 245:
-                    self.app.tell(self.player, send)
+                    self.player.tell(send)
                     send = ""
             if unfinished and self.player.session.context_name == 'builder':
                 send += "\nUnfinished: %s" % (", ".join(unfinished))
             if send:
-                self.app.tell(self.player, send)
+                self.player.tell(send)
              
 exported_class = CharsCommand

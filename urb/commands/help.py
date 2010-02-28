@@ -34,15 +34,14 @@ See INFO for: commands, contexts
         except KeyError:
             if context.__doc__:
                 for line in context.__doc__.split('\n'):
-                    self.app.tell(self.player, line)
-                self.app.tell(self.player,
-                "- The following commands are available ('all' for more) -")
+                    self.player.tell(line)
+                self.player.tell("- The following commands are available ('all' for more) -")
                 available = commands.get_allowed(self.player, all=False)
                 available = ['help', 'all'] + available
                 available = ", ".join(available)
                 while available:
                     send, available = available[:435], available[436:]
-                    self.app.tell(self.player, send)
+                    self.player.tell(send)
         else:
             comobj = None
             if command in allowed:
@@ -54,12 +53,10 @@ See INFO for: commands, contexts
                     if comobj:
                         if comobj.__doc__ or hasattr(comobj, 'schema'):
                             for line in commands.get_help(comobj):
-                                self.app.tell(self.player, line)
+                                self.player.tell(line)
                         else:
-                            self.app.tell(self.player,
-                            "Sorry, no help is available for '%s'." % command)
+                            self.player.tell("Sorry, no help is available for '%s'." % command)
                     else:
-                        self.app.tell(self.player,
-                        "Sorry, %s is not a command." % command)
+                        self.player.tell("Sorry, %s is not a command." % command)
 
 exported_class = HelpCommand

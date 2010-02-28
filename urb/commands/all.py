@@ -12,10 +12,9 @@ Lists all commands (including globals) that are available to you.
         allowed = commands.get_allowed(self.player, all=True) 
         allowed = ", ".join(allowed)
         context = self.player.session.context
-        self.app.tell(self.player,
-        "- The following commands are available -")
+        self.player.tell("- The following commands are available -")
         while allowed:
             send, allowed = allowed[:435], allowed[436:]
-            self.app.tell(self.player, send)
+            self.player.tell(send)
 
 exported_class = AllCommand

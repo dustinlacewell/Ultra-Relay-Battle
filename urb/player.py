@@ -55,9 +55,12 @@ class Player(object):
         return self.current_move == None
     ready = property(_get_ready)
     
+    def tell(self, message):
+        self.app.tell(self, message)
+    
     def halt(self):
         if self.ready:
-            self.app.tell(self, "You're not doing anything yet!")
+            self.tell("You're not doing anything yet!")
         else:
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
             self.current_move.alive = False

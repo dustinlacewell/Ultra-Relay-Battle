@@ -71,12 +71,10 @@ class BattleContext(contexts.Context):
                         
     def com_roster(_self, self, args):
         """Get the current battle roster."""
-        self.app.tell(self.player,
-        " - The current battle-roster -")
+        self.player.tell(" - The current battle-roster -")
         for nick, player in self.app.game.fighters.iteritems():
             char = player.character.fullname if player.character else "NO CHAR"
-            self.app.tell(self.player,
-            "%s(%s) - %d HP : %d MP : %d SP %s" % (
+            self.player.tell("%s(%s) - %d HP : %d MP : %d SP %s" % (
             nick, char,  player.health, 
             player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
     
@@ -84,9 +82,9 @@ class BattleContext(contexts.Context):
     def com_status(_self, self, args):
         """Get the status for a player or yourself."""
         if 'nickname' in args:
-            self.app.tell(self.player, args['nickname'].status_msg)
+            self.player.tell(args['nickname'].status_msg)
         else:
-            self.app.tell(self.player, self.player.status_msg)
+            self.player.tell(self.player.status_msg)
             
     def com_block(_self, self, args):
         """Block any incomming attacks."""
@@ -102,9 +100,8 @@ class BattleContext(contexts.Context):
         """Show a list of moves for your character."""
         thechar = self.player.character
         themoves = thechar.moves
-        self.app.tell(self.player,
-        "%s's moves are :" % thechar.fullname)
+        self.player.tell("%s's moves are :" % thechar.fullname)
         for move in themoves:
-            self.app.tell(self.player, move.info)
+            self.player.tell(move.info)
 
 exported_class = BattleContext

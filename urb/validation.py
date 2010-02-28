@@ -70,7 +70,7 @@ def element(app, name, argsleft):
 def user(app, name, argsleft):
     """Validate argument to an existing user."""
     nick = argsleft.pop(0)
-    user = app.database.get_user(nick)
+    user = app.database.User.get(nickname=nick)
     if not user:    
         raise ValidationError("'%s' is not a valid user." % nick)
     else:

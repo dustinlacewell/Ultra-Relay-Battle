@@ -35,7 +35,7 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
         except ValueError:
             self.sendLine("Usage: connect <username>")
             return
-        user = self.app.database.get_user(nickname)
+        user = self.app.database.User.get(nickname=nickname)
         if not user:
             self.sendLine("No such user '%s'." % nickname)
             return
@@ -52,8 +52,7 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
         except ValueError:
             self.sendLine("Usage: create <username> <email>")
             return
-        self.app.database.new_user(nickname, email)
-        self.app.database.commit()
+        self.app.database.User.create(nickname, email)
         self.sendLine("New user '%s' created successfully" % nickname)
 
 

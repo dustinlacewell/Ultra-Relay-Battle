@@ -63,6 +63,7 @@ class BattleContext(contexts.Context):
     """You're in battle!"""    
     
     def on_input(_self, self, command, args):
+        settings = self.app.game.settings
         thechar = self.player.character
         themoves = self.app.database.get_moves_for(thechar.selector)
         super = 0
@@ -70,8 +71,8 @@ class BattleContext(contexts.Context):
             try:
                 command, super = command.split('*')
                 super = int(super)
-                if super > self.app.game.settings.maxsuperlevel:
-                    self.app.tell(self.player, "The max super-level is currently: %d" % self.app.game.settings.maxsuperlevel)
+                if super > settings.maxsuperlevel:
+                    self.app.tell(self.player, "The max super-level is currently: %d" % settings.maxsuperlevel)
                     return True
             except:
                 self.app.tell(self.player,

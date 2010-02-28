@@ -86,10 +86,20 @@ class GameType(object):
         self.actions.append( (do_time, battlecommand) )
         
     def on_battle_do(_self, self, bcomm):
-        delegate_dict = {
-                         #'physical':    self.on_battle_physical,
-                         #'heal':        self.on_battle_heal,
-        }
+        #=======================================================================
+        # delegate_dict = {
+        #                 'physical':    self.on_battle_physical,
+        #                 #'heal':        self.on_battle_heal,
+        # }
+        # if bcomm.move.element in delegate_dict:
+        #    handler = delegate_dict[bcomm.move.element]
+        #    args = (
+        #            bcomm.player,
+        #            bcomm.target,
+        #            bcomm.move,
+        #            )
+        #    handler()
+        #=======================================================================
         targetp = self.fighters[bcomm.target]
         bcomm.player.superpoints -= bcomm.super * 100
         if bcomm.move.element == "physical":

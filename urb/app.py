@@ -23,7 +23,7 @@ class ApplicationClass(object):
     def __init__(self):
         # Service References #
         self._services = {}
-        self.database = db.DataDriver()
+        self.database = db
         
         self.signals['quit'           ] = Signal() # reason
         self.signals['outgoing_msg'   ] = Signal() # destination, message

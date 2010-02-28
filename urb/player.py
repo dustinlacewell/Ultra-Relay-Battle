@@ -17,7 +17,7 @@ class Player(object):
         self.app = app
         self.db = app.database
         self.session = None        
-        self.user = self.db.get_user(nickname)
+        self.user = self.db.User.get(nickname=nickname)
         
         self.team = 0
         
@@ -63,6 +63,7 @@ class Player(object):
             self.current_move.alive = False
             self.current_move = None
             self.app.signals['game_msg'].emit(self.status_msg)   
+            
 
 class Session(object):
     """

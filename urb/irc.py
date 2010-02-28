@@ -70,13 +70,11 @@ class IRCBot(IRCClient):
     def builtin(self, nickname, command, args):
         if command == 'register': # add new user
             email = args[0]
-            self.app.database.new_user(nickname, email)
-            self.app.database.commit()
+            self.app.database.User.create(nickname, email)
             self.msg(nickname, "New user, %s, created." % nickname)
             self.msg(nickname, "Please initiate a DCC Chat to login.")
         elif command == 'rmuser': # remove current user
-            self.app.database.del_user(nickname)
-            self.app.database.commit()
+            self.app.database.User.get(nickname=nickname).delete()
             self.msg(nickname, "Your user has been deleted.")
         elif command == 'startbattle':
             self.app.signals['start_battle'].emit()
@@ -102,7 +100,7 @@ class IRCBot(IRCClient):
         if self.builtin(nickname, command, args): return
         
         # If registered, direct to DCC Chat
-        if self.app.database.get_user(nickname):
+        if self.app.database.User.get(nickname=nickname):
             self.msg(nickname, 'Please initiate DCC Chat to begin.')
         # Otherwise direct to registration
         else:
@@ -114,7 +112,7 @@ class IRCBot(IRCClient):
     def dccDoChat(self, user, channel, address, port, data):
         user = user.split('!', 1)[0]
         dlog('DCC Chat request from %s on %s:%s' % (user, str(address), str(port)))
-        u = self.app.database.get_user(user)
+        u = self.app.database.User.get(nickname=user)
         if u:
             self.remote_hosts[str(address)] = unicode(user)
             self.bind(user)
@@ -317,7 +315,7 @@ class IRCBotFactory(protocol.ReconnectingClientFactory):
         
     # DCC SESSION #
     def bind(self, nickname, session):
-        u = self.app.database.get_user(nickname)
+        u = self.app.database.User.get(nickname=nickname)
         if u:
             self.chats[nickname] = session
             self.app.signals['login'].emit(nickname)

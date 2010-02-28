@@ -10,140 +10,66 @@ import transaction
 
 filename = u'urb.zodb'
 
-class DataDriver(object):
-    def __init__(self, db_name = filename):
-        self.storage = FileStorage.FileStorage(db_name)
-        self.db = DB(self.storage)
-        self.connection = self.db.open()
-        self.dbroot = self.connection.root()
-        self.deploy_schema()
+_storage = FileStorage.FileStorage(filename)
+_db = DB(_storage)
+_connection = _db.open()
+root = _connection.root()
 
-    def deploy_schema(self):
-        # ensure the db is up to date.  Creating these keys is
-        # effectively a schema version 0->1 migration, which we should
-        # formalize at some point, but we'll hardwire it for now.
-        root = self.dbroot
-        for key in "Users Moves Characters GameSettings".split():
-            if key not in root:
-                root[key] = OOBTree()
-            else:
-                for object in root[key].values():
-                    if key == 'GameSettings':
-                        gs = GameSettings()
-                        for attr in GameSettings.vorder:
-                            if not hasattr(object, attr):
-                                val = getattr(gs, attr)
-                                setattr(object, attr, val)
-                    elif key == 'Characters':
-                        cp = CharacterProfile(object.selector, object.fullname)
-                        for attr in CharacterProfile.vorder:
-                            if not hasattr(object, attr):
-                                val = getattr(cp, attr)
-                                setattr(object, attr, val)
-                    elif key == 'Moves':
-                        mp = MoveProfile(object.selector, object.fullname, object.ownerselector)
-                        for attr in MoveProfile.vorder:
-                            if not hasattr(object, attr):
-                                val = getattr(mp, attr)
-                                setattr(object, attr, val)
-                        for attr in ['_info_str', 'info']:
-                            if not hasattr(object, attr):
-                                val = getattr(MoveProfile, attr)
-                                setattr(object, attr, val)
-                
-        
-
-    def commit(self):
-        transaction.commit()
-
-    def close(self):
-        # XXX nothing uses this, so we have to rely on the default shutdown behavior for now
-        self.connection.close()
-        self.db.close()
-        self.storage.close()
-
-    def get_config(self):
-        return local
-
-    # USER METHODS #
-    def new_user(self, nickname, email, adminlevel = 0):
-        # First user is always admin
-        if len(self.get_all_users()) == 0:
-            adminlevel = 100
-        u = self.get_user(nickname) 
-        if not u:
-            dob = datetime.datetime.now()
-            u = User(nickname=nickname, email=email, dob=dob, adminlevel=adminlevel)
-            self.dbroot['Users'][nickname] = u
-        return u
-        
-    def del_user(self, nickname):
-        del self.dbroot['Users'][nickname]
-        
-    def get_user(self, nickname):
-        return self.dbroot['Users'].get(nickname)
+def deploy_schema():
+    # ensure the db is up to date.  Creating these keys is
+    # effectively a schema version 0->1 migration, which we should
+    # formalize at some point, but we'll hardwire it for now.
+    for key in "Users Moves Characters GameSettings".split():
+        if key not in root:
+            root[key] = OOBTree()
+        else:
+            for object in root[key].values():
+                if key == 'GameSettings':
+                    gs = GameSettings()
+                    for attr in GameSettings.vorder:
+                        if not hasattr(object, attr):
+                            val = getattr(gs, attr)
+                            setattr(object, attr, val)
+                elif key == 'Characters':
+                    cp = CharacterProfile(object.selector, object.fullname)
+                    for attr in CharacterProfile.vorder:
+                        if not hasattr(object, attr):
+                            val = getattr(cp, attr)
+                            setattr(object, attr, val)
+                elif key == 'Moves':
+                    mp = MoveProfile(object.selector, object.fullname, object.ownerselector)
+                    for attr in MoveProfile.vorder:
+                        if not hasattr(object, attr):
+                            val = getattr(mp, attr)
+                            setattr(object, attr, val)
+                    for attr in ['_info_str', 'info']:
+                        if not hasattr(object, attr):
+                            val = getattr(MoveProfile, attr)
+                            setattr(object, attr, val)
             
-    def get_all_users(self):
-        return self.dbroot['Users'].values()
+    
 
-    # CHARACTER METHODS #
-    def new_character(self, selector, fullname):
-        c = CharacterProfile(selector=selector, fullname=fullname)
-        self.dbroot['Characters'][selector] = c
-        return c
+def commit():
+    transaction.commit()
 
-    def get_character(self, selector):
-        return self.dbroot['Characters'].get(selector)
-        
-    def del_character(self, selector):
-        del self.dbroot['Characters'][selector]
+def close():
+    # XXX nothing uses this, so we have to rely on the default shutdown behavior for now
+    _connection.close()
+    _db.close()
+    _storage.close()
 
-    def get_all_characters(self):
-        return self.dbroot['Characters'].values()
-    
-    def change_character_selector(self, oldselector, newselector):
-        c = self.get_character(oldselector)
-        self.dbroot['Characters'][newselector] = c
-        self.del_character(oldselector)
-        print oldselector, newselector
-        print list(self.dbroot['Characters'])
-    
-    
-    # MOVE METHODS
-    # moves belong to characters, so most of these DAO methods are invisible when we have full OO/ORM
-    def new_move(self, selector, fullname, ownerselector):
-        m = MoveProfile(selector=selector, fullname=fullname, ownerselector=ownerselector)
-        self.dbroot['Moves'][(selector,ownerselector)] = m
-        return m
-    
-    def del_move(self, selector, ownerselector = None):
-        del self.dbroot['Moves'][(selector, ownerselector)]
-    
-    def get_move(self, selector, ownerselector):
-        return self.dbroot['Moves'].get((selector,ownerselector))
-        # return first move matching selector and ownerselector
-        pass
+def get_config():
+    return local
 
-    def get_moves_for(self, ownerselector):
-        # XXX HACK even an OODB query doesn't have to be this stupid,
-        # this is just quick and dirty querying
-        return [m for m in self.dbroot['Moves'].values() if m.ownerselector == ownerselector]
-        
-    def get_all_moves(self, selector):
-        return [m for m in self.dbroot['Moves'].values() if m.selector == selector]
-    
-    def change_move_selector(self, ownerselector, oldselector, newselector):
-        m = get_move(oldselector, ownerselector)
-        self.dbroot['Moves'][(newselector, ownerselector)] = m
-        self.del_move(ownerselector, oldselector)
-        
-    def get_gametype(self, name):
-        gtype = self.dbroot['GameSettings'].get(name)
-        if gtype:
-            return gtype
-        self.dbroot['GameSettings'][name] = GameSettings()
-        return self.get_gametype(name)
-        
+class DatabaseBaseException(Exception):
+       def __init__(self, value):
+           self.parameter = value
+       def __str__(self):
+           return repr(self.parameter)
+       
+class DBGetException(DatabaseBaseException):
+    pass
+
 
 class User( Persistent ):
     def __init__(self, nickname, email, dob, adminlevel):
@@ -161,8 +87,55 @@ class User( Persistent ):
         self.dmgdone   = 0
         self.dmgtaken  = 0
         self.dmghealed = 0
-    
         
+    @classmethod
+    def all(cls):
+        return root['Users'].values()
+        
+    @classmethod
+    def create(cls, nickname, email, adminlevel=0):
+        if len(cls.all()) == 0:
+            adminlevel = 100
+        dob = datetime.datetime.now()
+        newuser = cls(nickname, email, dob, adminlevel)
+        root['Users'][nickname] = newuser
+        commit()
+        
+    @classmethod
+    def get(cls, **kwargs):
+        all = cls.all()
+        matched = []
+        for item in all:
+            missing = [attr for attr in kwargs if not hasattr(item, attr)]
+            if missing:
+                raise DBGetException("The following attributes are invalid: %s" % missing)
+            else:
+                invalid = [attr for attr, val in kwargs.iteritems() if getattr(item, attr) != val]
+                if len(invalid) == 0:
+                    matched.append(item)
+        if len(matched) > 1:
+            raise DBGetException("The get request returned multiple objects!")
+        else:
+            return matched[0]
+        
+    @classmethod
+    def filter(cls, **kwargs):
+        all = cls.all()
+        matched = []
+        for item in all:
+            missing = [attr for attr in kwargs if not hasattr(item, attr)]
+            if missing:
+                raise DBGetException("The following attributes are invalid: %s" % missing)
+            else:
+                invalid = [attr for attr, val in kwargs.iteritems() if getattr(item, attr) != val]
+                if len(invalid) == 0:
+                    matched.append(item)
+        return matched
+    
+    def delete(self):
+        del root['Users'][self.nickname]
+        commit()
+
 class CharacterProfile( Persistent ):
     def __init__(self, selector, fullname):
         self.selector = selector
@@ -208,7 +181,27 @@ class CharacterProfile( Persistent ):
         'block_fail_msg', 'block_success_msg', 'rest_msg', 'kill_msg',
         'fatality_msg', 'death_msg', 'taunt_msg', 'finalized')
 
+# CHARACTER METHODS #
+def new_character(selector, fullname):
+    c = CharacterProfile(selector=selector, fullname=fullname)
+    root['Characters'][selector] = c
+    return c
 
+def get_character(selector):
+    return root['Characters'].get(selector)
+    
+def del_character(selector):
+    del root['Characters'][selector]
+
+def get_all_characters():
+    return root['Characters'].values()
+
+def change_character_selector(oldselector, newselector):
+    c = get_character(oldselector)
+    root['Characters'][newselector] = c
+    del_character(oldselector)
+    print oldselector, newselector
+    print list(root['Characters'])
 
 class MoveProfile( Persistent ):
     def __init__(self, selector, fullname, ownerselector):
@@ -250,6 +243,35 @@ class MoveProfile( Persistent ):
         'element', 'cansuper', 'cancounter', 'prepare_msg', 'supr_prepare_msg',
         'hit_msg', 'miss_msg', 'crit_hit_msg', 'supr_hit_msg', 'effectchances') 
 
+
+# MOVE METHODS
+# moves belong to characters, so most of these DAO methods are invisible when we have full OO/ORM
+def new_move(selector, fullname, ownerselector):
+    m = MoveProfile(selector=selector, fullname=fullname, ownerselector=ownerselector)
+    root['Moves'][(selector,ownerselector)] = m
+    return m
+
+def del_move(selector, ownerselector = None):
+    del root['Moves'][(selector, ownerselector)]
+
+def get_move(selector, ownerselector):
+    return root['Moves'].get((selector,ownerselector))
+    # return first move matching selector and ownerselector
+    pass
+
+def get_moves_for(ownerselector):
+    # XXX HACK even an OODB query doesn't have to be this stupid,
+    # this is just quick and dirty querying
+    return [m for m in root['Moves'].values() if m.ownerselector == ownerselector]
+    
+def get_all_moves(selector):
+    return [m for m in root['Moves'].values() if m.selector == selector]
+
+def change_move_selector(ownerselector, oldselector, newselector):
+    m = get_move(oldselector, ownerselector)
+    root['Moves'][(newselector, ownerselector)] = m
+    del_move(ownerselector, oldselector)
+    
 class GameSettings( Persistent ):
     def __init__(self):
         self.starthealth = 600
@@ -269,3 +291,12 @@ class GameSettings( Persistent ):
     vorder = ('starthealth', 'startmagic', 'startsuper',
               'maxhealth', 'maxmagic', 'maxsuper', 'maxsuperlevel',
               'damagemultiplier', 'mprate')
+    
+def get_gametype(name):
+    gtype = root['GameSettings'].get(name)
+    if gtype:
+        return gtype
+    root['GameSettings'][name] = GameSettings()
+    return get_gametype(name)        
+
+deploy_schema()

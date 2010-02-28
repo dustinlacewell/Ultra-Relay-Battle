@@ -65,7 +65,12 @@ class Player(object):
             self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
             self.current_move.alive = False
             self.current_move = None
-            self.app.signals['game_msg'].emit(self.status_msg)   
+            self.app.signals['game_msg'].emit(self.status_msg) 
+            
+    def is_enemy(self, player):
+        return player.team == self.team
+    
+    
             
 
 class Session(object):

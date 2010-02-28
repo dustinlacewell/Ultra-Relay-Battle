@@ -80,7 +80,7 @@ class GameEngine(object):
             thetarget, left = validation.fighter(self.app, target.nickname, [target.nickname])    
 
             if ttype == "ally":
-                if self.is_enemy(player, thetarget):
+                if player.is_enemy(thetarget):
                     raise ValidationError(
                     "'%s' can only target allies." % (move.fullname))
                 elif thetarget.health <= 0:
@@ -89,7 +89,7 @@ class GameEngine(object):
                 else:
                     return True
             elif ttype == "enemy":
-                if not self.is_enemy(player, thetarget):
+                if not player.is_enemy(thetarget):
                     raise ValidationError(
                     "%s' can only target enemies." % (move.fullname))
                 elif thetarget.health <= 0:
@@ -144,7 +144,6 @@ class GameEngine(object):
         
     # ENGINE EVENT HANDLERS #
     def get_signal_matrix(self):
-        print "HOLY HELL"
         return {
             # Engine handlers
             'choose' : self.on_choose,

@@ -32,28 +32,26 @@ concepts please refer to:
         "Exit to the main-menu."
         self.revert()
     
-    @metadata(schema=(('str','selector'), ('msg','fullname')))
+    @metadata(schema=(('str','selector'),))
     def com_mkchar(_self, self, args):
         """
 Create a new character.
 """
         selector = unicode(args['selector'])
-        fullname = unicode(args['fullname'])
-        char = self.app.database.new_character(selector, fullname)
+        char = self.app.database.Character.create(selector)
         if char:
             self.app.tell(self.player,
             "'%s' character succesfully created." % args['selector'])
             _self.working = char
             
-    @metadata(schema=(('char','character'), ('str', 'selector'), ('msg', 'fullname')))
+    @metadata(schema=(('char','character'), ('str', 'selector')))
     def com_mkmove(_self, self, args):
         """
 Create a new character move.
 """
         char = args['character']
         selector = unicode(args['selector'])
-        fullname = unicode(args['fullname'])
-        move = self.app.database.new_move(selector, fullname, char.selector)
+        move = self.app.database.Move.create(selector, char.selector)
         if move:
             self.app.tell(self.player,
             "'%s' move successfully created for '%s'." % (selector, char.selector))
@@ -64,7 +62,7 @@ Create a new character move.
         """
 Permanently delete character.
 """
-        self.app.database.del_character(args['selector'].selector)
+        self.app.database.Character.get(selector=args['selector'].selector).delete()
             
     @metadata(schema=(('char','selector'), ('msg*','filters')))
     def com_lsc(_self, self, args):
@@ -74,10 +72,9 @@ attributes or The filters are a list of attributes to print. The filters you
 pass in can be partial and will print any attributes that they match. Passing 
 'block' would return all the block messages, for example. 
 """
-        
-        print list(self.app.database.dbroot['Characters'])
+
         char = args['selector']
-        attrs =  db.CharacterProfile.vorder
+        attrs =  db.Character.vorder
         fields = attrs
         # apply autocomplete filters
         if 'filters' in args:
@@ -92,8 +89,7 @@ pass in can be partial and will print any attributes that they match. Passing
             self.app.tell(self.player, "%s%s: %s" % (
                 field, (20 - len(field)) * " ", getattr(char, field)))
                 
-        movelist = self.app.database.get_moves_for(char.selector)
-        movelist = [move.selector for move in movelist]
+        movelist = [move.selector for move in char.moves]
         movelist = ", ".join(movelist)
         if 'filters' not in args and movelist:
             self.app.tell(self.player, "-" * 80)
@@ -108,10 +104,10 @@ will print any attributes that they match. Passing 'can' would return both
 the can* booleans, for example. In this command mselector can also be partial.
 """ 
         char = args['pselector']
-        attrs = db.MoveProfile.vorder
+        attrs = db.Move.vorder
         fields = attrs
         mselector = args['mselector']
-        movelist = self.app.database.get_moves_for(char.selector)
+        movelist = char.moves
         themove = None
         for move in movelist:
             if move.selector.startswith(mselector):
@@ -214,7 +210,7 @@ type of input, like an number or a single word. The attribute may be partial.
         attr = args['attribute']
         value = [args['value']]
         fields = []
-        for field, vtype in db.CharacterProfile.vschema.iteritems():
+        for field, vtype in db.Character.vschema.iteritems():
             if field.startswith(attr):
                 fields.append(field)
 
@@ -223,14 +219,14 @@ type of input, like an number or a single word. The attribute may be partial.
         elif len(fields) == 1:
             try:
                 field = fields[0]
-                vtype = db.CharacterProfile.vschema[field]
+                vtype = db.Character.vschema[field]
                 validator = validators[vtype]
                 val, left = validator(self.app, field, value)
             except validation.ValidationError, e:
                 self.app.tell(self.player, e.message)
             else:
                 if field == 'selector':
-                    self.app.database.change_character_selector(char.selector, val)
+                    char.change_selector(val)
                 elif field in ['pstrength', 'pdefense', 'mstrength', 'mdefense']:
                     total = char.pstrength + char.pdefense + char.mstrength + char.mdefense
                     max = MAX_CHAR_STAT_TOTAL
@@ -281,7 +277,7 @@ attribute may be partial.
         }
         char = args['pselector']
         mselector = args['mselector']
-        movelist = self.app.database.get_moves_for(char.selector)
+        movelist = char.moves
         themove = None
         for move in movelist:
             if move.selector.startswith(mselector):
@@ -290,7 +286,7 @@ attribute may be partial.
             attr = args['attribute']
             value = [args['value']]
             fields = []
-            for field, vtype in db.MoveProfile.vschema.iteritems():
+            for field, vtype in db.Move.vschema.iteritems():
                 if field.startswith(attr):
                     fields.append(field)
             if len(fields) > 1:
@@ -298,7 +294,7 @@ attribute may be partial.
             elif len(fields) == 1:
                 try:
                     field = fields[0]
-                    vtype = db.MoveProfile.vschema[field]
+                    vtype = db.Move.vschema[field]
                     validator = validators[vtype]
                     val, left = validator(self.app, field, value)
                 except validation.ValidationError, e:

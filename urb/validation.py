@@ -99,7 +99,7 @@ def fighter(app, name, argsleft):
 def character(app, name, argsleft):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
-    char = app.database.get_character(selector)
+    char = app.database.Character.get(selector=selector)
     if char:
         return char, argsleft
     else:
@@ -120,8 +120,11 @@ def gametype(app, name, argsleft):
     typename = argsleft.pop(0)
     gt = gametypes.get(typename)
     if gt:
-        gt = app.database.get_gametype(typename)
+        gt = app.database.GameSettings.get(selector=typename)
+        if gt == None:
+            gt = app.database.GameSettings.create(selector=typename)
         return gt, argsleft
+        
     else:
         raise ValidationError("'%s' is not a valid gametype." % typename)
         

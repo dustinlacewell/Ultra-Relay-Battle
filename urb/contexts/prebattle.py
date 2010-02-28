@@ -62,7 +62,7 @@ class PreBattleContext(contexts.Context):
         """Show a list of moves for your character."""
         thechar = self.player.character
         if thechar:
-            themoves = self.app.database.get_moves_for(thechar.selector)
+            themoves = char.moves
             self.app.tell(self.player,
             "%s's moves are :" % thechar.fullname)
             for move in themoves:

@@ -65,7 +65,7 @@ class BattleContext(contexts.Context):
     def on_input(_self, self, command, args):
         settings = self.app.game.settings
         thechar = self.player.character
-        themoves = self.app.database.get_moves_for(thechar.selector)
+        themoves = thechar.moves
         super = 0
         if '*' in command:
             try:
@@ -170,7 +170,7 @@ class BattleContext(contexts.Context):
     def com_moves(_self, self, args):
         """Show a list of moves for your character."""
         thechar = self.player.character
-        themoves = self.app.database.get_moves_for(thechar.selector)
+        themoves = thechar.moves
         self.app.tell(self.player,
         "%s's moves are :" % thechar.fullname)
         for move in themoves:

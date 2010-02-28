@@ -26,7 +26,7 @@ Get information on a chararcter or character move.
                 else:
                     self.app.tell(self.player, "'%s' doesn't have that move." %(cselector, ))
             else:
-                moves = self.app.database.get_moves_for(cselector)
+                moves = char.moves
                 self.app.tell(self.player,
                     "%s (%s)" % (char.fullname, char.selector))
                 self.app.tell(self.player,"Physical Str: %s" % char.get_gauge('pstrength'))
@@ -42,8 +42,8 @@ Get information on a chararcter or character move.
                     mselector = move.selector
                     self.app.tell(self.player, move.info)
         else:
-            chars = [ char.selector for char in self.app.database.get_all_characters() if char.finalized != 0]
-            unfinished = [ char.selector for char in self.app.database.get_all_characters() if char.finalized == 0]
+            chars = [ char.selector for char in self.app.database.Character.all() if char.finalized != 0]
+            unfinished = [ char.selector for char in self.app.database.Character.all() if char.finalized == 0]
             self.app.tell(self.player,
             "Ultra Relay Battle - Character listing :")
             send = ""

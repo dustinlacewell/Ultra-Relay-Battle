@@ -43,7 +43,10 @@ Have fun!"""
         self.gametype = gametypes.get('survivor')(self)
         
     def _get_settings(self):
-        return self.app.database.get_gametype(self.gametype.name)
+        gs = self.app.database.GameSettings.get(selector=self.gametype.name)
+        if gs == None:
+            gs = self.app.database.GameSettings.create(self.gametype.name)
+        return gs 
     settings = property(_get_settings)
     
     def check_win_condition(self):
@@ -183,7 +186,7 @@ Have fun!"""
         
     def on_choose(self, player, selector):
         if player in self.fighters:
-            char = self.app.database.get_character(selector)
+            char = self.app.database.Character.get(selector=selector)
             if char:
                 player.character = char
                 join_msg = self.parse_message(player, char.selection_msg)

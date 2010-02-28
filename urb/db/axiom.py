@@ -55,15 +55,15 @@ class DataDriver(object):
         
     def get_character(self, selector):
         r = list(self.db.query(
-            CharacterProfile,
-            CharacterProfile.selector == unicode(selector)
+            Character,
+            Character.selector == unicode(selector)
         ))
         if len(r) == 1:
             return r[0]
             
     # CHARACTER METHODS #
     def new_character(self, selector, fullname):
-        c = CharacterProfile(store=self.db, selector=selector, fullname=fullname)
+        c = Character(store=self.db, selector=selector, fullname=fullname)
         return c
         
     def del_character(self, selector):
@@ -73,18 +73,18 @@ class DataDriver(object):
     
     def get_character(self, selector):
         c = list(self.db.query(
-            CharacterProfile,
-            CharacterProfile.selector==selector
+            Character,
+            Character.selector==selector
         ))
         if len(c) == 1:
             return c[0]
         
     def get_all_characters(self):
-        return list(self.db.query(CharacterProfile))
+        return list(self.db.query(Character))
     
     # MOVE METHODS #
     def new_move(self, selector, fullname, ownerselector):
-        m = MoveProfile(store=self.db, selector=selector, fullname=fullname, ownerselector=ownerselector)
+        m = Move(store=self.db, selector=selector, fullname=fullname, ownerselector=ownerselector)
         return m
     
     def del_move(self, selector, ownerselector = None):
@@ -94,10 +94,10 @@ class DataDriver(object):
     
     def get_move(self, selector, ownerselector):
         m = list(self.db.query(
-            MoveProfile,
+            Move,
             AND(
-                MoveProfile.selector == selector,
-                MoveProfile.ownerselector == ownerselector
+                Move.selector == selector,
+                Move.ownerselector == ownerselector
             )
         ))
         if len(m) == 1:
@@ -105,15 +105,15 @@ class DataDriver(object):
 
     def get_moves_for(self, ownerselector):
         m = list(self.db.query(
-            MoveProfile,
-            MoveProfile.ownerselector == ownerselector
+            Move,
+            Move.ownerselector == ownerselector
         ))
         return m
         
     def get_all_moves(self, selector):
         m = list(self.db.query(
-            MoveProfile,
-            MoveProfile.selector == selector
+            Move,
+            Move.selector == selector
         ))
         return m
             
@@ -187,8 +187,8 @@ class User( item.Item ):
     dmghealed = attributes.integer(default=0)
     
 
-class CharacterProfile( item.Item ):
-    typeName = 'CharacterProfile'
+class Character( item.Item ):
+    typeName = 'Character'
     schemeVersion = 1
 
     selector = attributes.text(indexed=True, allowNone=False)
@@ -226,7 +226,7 @@ class CharacterProfile( item.Item ):
         'fatality_msg', 'death_msg', 'taunt_msg')
         
 
-class MoveProfile( item.Item ):
+class Move( item.Item ):
     fullname = attributes.text(allowNone=False)
     selector = attributes.text(allowNone=False)
     ownerselector = attributes.text(allowNone=False)

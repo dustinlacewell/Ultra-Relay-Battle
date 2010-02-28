@@ -88,7 +88,7 @@ class BattleContext(contexts.Context):
             
     def com_block(_self, self, args):
         """Block any incomming attacks."""
-        if self.app.game.is_ready(self.player):
+        if self.player.ready:
             bcommand = BlockCommand(self.app, self.player)
             self.player.current_move = bcommand
                 

@@ -48,12 +48,6 @@ class GameEngine(object):
     def is_paused(self):
         return not self.tick_timer.running
         
-    def is_ready(self, player):
-        return player.ready
-        
-    def is_enemy(self, player, target):
-        return not player.team == target.team
-        
     def find_target(self, player, ttype):
         if ttype == 'ally':
             allies = self.get_allies(player)

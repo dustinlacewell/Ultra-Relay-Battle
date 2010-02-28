@@ -44,7 +44,7 @@ class BattleCommand(commands.Command):
     
         
     def perform(self):
-        self.app.signals['battle_execute'].emit(self)
+        self.app.signals['battle_do'].emit(self)
         
         if self.target.health <= 0:
             death_msg = self.parse_message(self.target, self.target.character.death_msg, self.player)
@@ -130,7 +130,7 @@ class BattleContext(contexts.Context):
                                 self.app.tell(self.player, "You don't have enough Magic to do '%s'!" % move.fullname)
                                 return True
                         bcommand = BattleCommand(self.app, self.player, move, target, mpcost, super)
-                        self.app.signals['battle_command'].emit(bcommand)
+                        self.app.signals['battle_queue'].emit(bcommand)
                         return True
                     
     def com_exit(_self, self, args):

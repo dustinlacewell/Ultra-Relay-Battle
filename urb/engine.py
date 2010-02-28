@@ -136,8 +136,8 @@ Have fun!"""
             'battle_abort' : self.on_battle_abort,
             'battle_finish' : self.on_battle_finish,
             'battle_damage' : self.on_battle_damage,
-            'battle_command': self.on_battle_command,
-            'battle_execute': self.on_battle_execute,
+            'battle_queue': self.on_battle_queue,
+            'battle_do': self.on_battle_do,
             
             
         }
@@ -297,11 +297,11 @@ Have fun!"""
     def on_battle_damage(self, player, target, damage, crit=0):
         self.gametype.on_battle_damage(self, player, target, damage, crit)
 
-    def on_battle_command(self, battlecommand):
-        self.gametype.on_battle_command(self, battlecommand)
+    def on_battle_queue(self, battlecommand):
+        self.gametype.on_battle_queue(self, battlecommand)
         
-    def on_battle_execute(self, battlecommand):
-        self.gametype.on_battle_execute(self, battlecommand)
+    def on_battle_do(self, battlecommand):
+        self.gametype.on_battle_do(self, battlecommand)
     
     def tick(self):
         for fighter in self.fighters.values():

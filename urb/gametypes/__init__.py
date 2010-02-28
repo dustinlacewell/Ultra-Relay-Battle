@@ -80,12 +80,16 @@ class GameType(object):
     def on_battle_finish(_self, self, winid):
         pass
 
-    def on_battle_command(_self, self, battlecommand):
+    def on_battle_queue(_self, self, battlecommand):
         battlecommand.player.current_move = battlecommand
         do_time = self.gametime + battlecommand.tick_delay
         self.actions.append( (do_time, battlecommand) )
         
-    def on_battle_execute(_self, self, bcomm):
+    def on_battle_do(_self, self, bcomm):
+        delegate_dict = {
+                         #'physical':    self.on_battle_physical,
+                         #'heal':        self.on_battle_heal,
+        }
         targetp = self.fighters[bcomm.target]
         bcomm.player.superpoints -= bcomm.super * 100
         if bcomm.move.element == "physical":

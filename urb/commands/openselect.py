@@ -27,7 +27,11 @@ Sign up for battle and choose a character!
             elif self.app.game.state == 'prebattle':
                 self.app.signals['open_selection'].emit(None)
             else:
-                self.app.tell(self.player, "# Missing 'gametype' parameter. (1:str)")
+                gtype = gametypes.get('survivor')
+                if gtype:
+                    self.app.signals['open_selection'].emit(gtype)
+                else:
+                    self.app.tell(self.player, "# Missing 'gametype' parameter. (1:str)")
 
             
 exported_class = OpenSelectionCommand

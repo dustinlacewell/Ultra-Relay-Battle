@@ -5,6 +5,7 @@ from twisted.conch.telnet import TelnetTransport, TelnetProtocol
 from twisted.internet import protocol
 from twisted.protocols import basic
 
+from urb.db import *
 from urb import app
 from urb.util import dlog
 
@@ -35,7 +36,7 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
         except ValueError:
             self.sendLine("Usage: connect <username>")
             return
-        user = self.app.database.User.get(nickname=nickname)
+        user = User.get(nickname=nickname)
         if not user:
             self.sendLine("No such user '%s'." % nickname)
             return
@@ -52,7 +53,7 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
         except ValueError:
             self.sendLine("Usage: create <username> <email>")
             return
-        self.app.database.User.create(nickname, email)
+        User.create(nickname, email)
         self.sendLine("New user '%s' created successfully" % nickname)
 
 
@@ -88,7 +89,7 @@ class TelnetService(internet.TCPServer):
     
     def __init__(self, app):
         self.app = app
-        port = app.database.get_config().telnet_port
+        port = get_config().telnet_port
         self.factory = protocol.ServerFactory()
         self.factory.protocol = self.wtf
         internet.TCPServer.__init__(self, port, self.factory)

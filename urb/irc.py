@@ -8,6 +8,7 @@ from twisted.persisted import styles
 from twisted.protocols import basic
 from twisted.words.protocols.irc import IRCClient, DccChat
 
+from urb.db import *
 from urb import app
 from urb.colors import colorize
 from urb.util import dlog
@@ -70,18 +71,11 @@ class IRCBot(IRCClient):
     def builtin(self, nickname, command, args):
         if command == 'register': # add new user
             email = args[0]
-            self.app.database.User.create(nickname, email)
+            User.create(nickname, email)
             self.msg(nickname, "New user, %s, created." % nickname)
             self.msg(nickname, "Please initiate a DCC Chat to login.")
-        elif command == 'rmuser': # remove current user
-            self.app.database.User.get(nickname=nickname).delete()
-            self.msg(nickname, "Your user has been deleted.")
-        elif command == 'startbattle':
-            self.app.signals['start_battle'].emit()
-        else:
-            return False
+            return True  
         
-        return True
     
     # Incomming message handling    
     def privmsg(self, user, channel, message):
@@ -100,7 +94,7 @@ class IRCBot(IRCClient):
         if self.builtin(nickname, command, args): return
         
         # If registered, direct to DCC Chat
-        if self.app.database.User.get(nickname=nickname):
+        if User.get(nickname=nickname):
             self.msg(nickname, 'Please initiate DCC Chat to begin.')
         # Otherwise direct to registration
         else:
@@ -112,7 +106,7 @@ class IRCBot(IRCClient):
     def dccDoChat(self, user, channel, address, port, data):
         user = user.split('!', 1)[0]
         dlog('DCC Chat request from %s on %s:%s' % (user, str(address), str(port)))
-        u = self.app.database.User.get(nickname=user)
+        u = User.get(nickname=user)
         if u:
             self.remote_hosts[str(address)] = unicode(user)
             self.bind(user)
@@ -265,7 +259,7 @@ class IRCBotFactory(protocol.ReconnectingClientFactory):
         self.chats = {}
         
         # Get IRC configuration
-        self.conf = self.app.database.get_config()
+        self.conf = get_config()
         # Create DCC listen port and factory
         dccfactory = DccChatFactory(app, self)
         port = reactor.listenTCP(int(self.conf.dcc_listen_port), dccfactory, 999)
@@ -315,7 +309,7 @@ class IRCBotFactory(protocol.ReconnectingClientFactory):
         
     # DCC SESSION #
     def bind(self, nickname, session):
-        u = self.app.database.User.get(nickname=nickname)
+        u = User.get(nickname=nickname)
         if u:
             self.chats[nickname] = session
             self.app.signals['login'].emit(nickname)
@@ -353,7 +347,7 @@ class IRCService(internet.TCPClient):
     
     def __init__(self, app):
         self.app = app
-        conf = app.database.get_config()
+        conf = get_config()
         network = conf.irc_network
         ports = [int(port) for port in conf.irc_ports]
         self.factory = IRCBotFactory(app, ports)

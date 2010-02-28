@@ -25,7 +25,7 @@ def deploy_schema():
         else:
             for object in root[key].values():
                 if key == 'GameSettings':
-                    gs = GameSettings()
+                    gs = GameSettings(object.selector)
                     for attr in GameSettings.vorder:
                         if not hasattr(object, attr):
                             val = getattr(gs, attr)

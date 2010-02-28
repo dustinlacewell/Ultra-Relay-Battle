@@ -1,3 +1,4 @@
+from urb.db import User
 from urb import contexts
 from urb.util import dlog
           
@@ -15,9 +16,8 @@ class Player(object):
     def __init__(self, nickname, app):
         self.nickname = nickname
         self.app = app
-        self.db = app.database
         self.session = None        
-        self.user = self.db.User.get(nickname=nickname)
+        self.user = User.get(nickname=nickname)
         
         self.team = 0
         

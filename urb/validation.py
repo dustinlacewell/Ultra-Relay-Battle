@@ -17,7 +17,7 @@
     'message' all strings are consumed and concatenated to 
     form the validated value.
     """
-
+from urb.db import *
 from urb.commands import get_name
 from urb.constants import elements
 
@@ -70,7 +70,7 @@ def element(app, name, argsleft):
 def user(app, name, argsleft):
     """Validate argument to an existing user."""
     nick = argsleft.pop(0)
-    user = app.database.User.get(nickname=nick)
+    user = User.get(nickname=nick)
     if not user:    
         raise ValidationError("'%s' is not a valid user." % nick)
     else:
@@ -99,7 +99,7 @@ def fighter(app, name, argsleft):
 def character(app, name, argsleft):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
-    char = app.database.Character.get(selector=selector)
+    char = Character.get(selector=selector)
     if char:
         return char, argsleft
     else:
@@ -108,7 +108,7 @@ def character(app, name, argsleft):
 def move(app, name, argsleft):
     """Validate argument to a *LIST* of existing moves."""
     selector = argsleft.pop(0)
-    moves = app.database.get_all_moves(selector)
+    moves = Move.filter(selector=selector)
     if len(moves):
         return moves, argsleft
     else:
@@ -120,9 +120,9 @@ def gametype(app, name, argsleft):
     typename = argsleft.pop(0)
     gt = gametypes.get(typename)
     if gt:
-        gt = app.database.GameSettings.get(selector=typename)
+        gt = GameSettings.get(selector=typename)
         if gt == None:
-            gt = app.database.GameSettings.create(selector=typename)
+            gt = GameSettings.create(selector=typename)
         return gt, argsleft
         
     else:

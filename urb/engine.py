@@ -2,6 +2,7 @@ import random                   # choice
 
 from twisted.internet.task import LoopingCall
 
+from urb.db import *
 from urb import commands, gametypes, validation
 #from urb.gametypes import GameType, FFAGameType
 from urb.player import Player, Session
@@ -28,7 +29,6 @@ Have fun!"""
 
     def __init__(self, app):
         self.app = app
-        self.db = app.database
         
         self.players = {}
         self.fighters = {}
@@ -42,10 +42,14 @@ Have fun!"""
         self.state = "idle" # idle, selection prebattle battle
         self.gametype = gametypes.get('survivor')(self)
         
+    def _get_players(self):
+        return self.app.players
+    players = property(_get_players)
+        
     def _get_settings(self):
-        gs = self.app.database.GameSettings.get(selector=self.gametype.name)
+        gs = GameSettings.get(selector=self.gametype.name)
         if gs == None:
-            gs = self.app.database.GameSettings.create(self.gametype.name)
+            gs = GameSettings.create(self.gametype.name)
         return gs 
     settings = property(_get_settings)
     
@@ -61,7 +65,7 @@ Have fun!"""
     def is_enemy(self, player, target):
         return not player.team == target.team
         
-    def get_target(self, player, ttype):
+    def find_target(self, player, ttype):
         if ttype == 'ally':
             allies = self.get_allies(player)
             return random.choice(allies)
@@ -118,6 +122,8 @@ Have fun!"""
         if "%TGT" in message and target:
             message = message.replace("%TGT", target.nickname)
         return message
+    
+    
         
     # ENGINE EVENT HANDLERS #
     def get_signal_matrix(self):
@@ -145,30 +151,32 @@ Have fun!"""
             
         }
     
-    def on_login(self, nickname):
-        # Create the player object with the session
-        newplayer = Player(nickname, self.app)
-        session = Session(newplayer, self.app)
-        newplayer.session = session
-        if nickname in self.players:
-            oldsession = self.players[nickname].session
-            newplayer.session = oldsession
-            self.players[nickname] = newplayer
-            if nickname in self.fighters:
-                self.fighters[nickname] = newplayer
-        else:
-            self.players[nickname] = newplayer
-        player_count = len(self.players) - 1
-        motd = self.motd % (nickname, player_count)
-        for line in motd.split("\n"):
-            self.app.tell(newplayer, line)
-        session.switch('mainmenu') 
-        
-    def on_logout(self, nickname):
-        if nickname in self.fighters:
-            self.on_forfeit(nickname)
-        if nickname in self.players:
-            del self.players[nickname]
+    #===========================================================================
+    # def on_login(self, nickname):
+    #    # Create the player object with the session
+    #    newplayer = Player(nickname, self.app)
+    #    session = Session(newplayer, self.app)
+    #    newplayer.session = session
+    #    if nickname in self.players:
+    #        oldsession = self.players[nickname].session
+    #        newplayer.session = oldsession
+    #        self.players[nickname] = newplayer
+    #        if nickname in self.fighters:
+    #            self.fighters[nickname] = newplayer
+    #    else:
+    #        self.players[nickname] = newplayer
+    #    player_count = len(self.players) - 1
+    #    motd = self.motd % (nickname, player_count)
+    #    for line in motd.split("\n"):
+    #        self.app.tell(newplayer, line)
+    #    session.switch('mainmenu') 
+    #    
+    # def on_logout(self, nickname):
+    #    if nickname in self.fighters:
+    #        self.on_forfeit(nickname)
+    #    if nickname in self.players:
+    #        del self.players[nickname]
+    #===========================================================================
         
         
     def on_signup(self, player, character):
@@ -186,7 +194,7 @@ Have fun!"""
         
     def on_choose(self, player, selector):
         if player in self.fighters:
-            char = self.app.database.Character.get(selector=selector)
+            char = Character.get(selector=selector)
             if char:
                 player.character = char
                 join_msg = self.parse_message(player, char.selection_msg)
@@ -263,6 +271,84 @@ Have fun!"""
                     self.app.tell(player, "'%s' isn't an available command." % command)
         else: # Inform the user the command isn't available
             self.app.tell(player, "'%s' isn't an available command." % command)
+            
+    def process_battle_input(self, player, command, args):
+        thechar = player.character
+        # Process super syntax
+        super = 0
+        if '*' in command:
+            try:
+                command, super = command.split('*')
+                super = int(super)
+            except:
+                self.app.tell(player,
+                   "Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
+        themove = Move.get(selector=command)
+        if themove in thechar.moves:
+            # Check if battle is paused               
+            if self.is_paused():
+                self.app.tell(player,
+                "The battle is paused, you'll have to wait to '%s'." % command)
+                return True
+            # Check if player is alive
+            elif player.health <= 0:
+                self.app.tell(player,
+                "You can't do '%s' when you're DEAD!" % themove.fullname)
+                return True
+            # Check if player is ready
+            elif not player.ready:
+                if player.current_move.target:
+                    self.app.tell(player,
+                    "You can't do '%s' while you're doing '%s' on %s." % (
+                    command, player.current_move.name,
+                    player.current_move.target))
+                else:
+                    self.app.tell(player,
+                    "You can't do '%s' while you're doing '%s'." % (
+                    command, player.current_move.name))
+                return True
+            # Player is ready
+            elif player.ready:
+                # Establish target or find one
+                targetname = args[0] if len(args) >= 1 else None
+                if not targetname:
+                    targetname = self.find_target(player, themove.target).nickname
+                    if not targetname:
+                        self.app.tell(player,
+                        "You couldn't find a valid target!")
+                        return True
+               # Validate the target against move-type
+                try:
+                    target = self.fighters[targetname]
+                    self.validate_target(player, target, themove)
+                except validation.ValidationError, e:
+                    self.app.tell(player, e.message)
+                    return True
+                else:
+                    # Validate super usage
+                    if super > 0:
+                        if not themove.cansuper:
+                            self.app.tell(player, "The '%s' move can't be supered." % (themove.fullname))
+                            return True
+                        if player.superpoints < super * 100:
+                            self.app.tell(player, "You don't have enough Super to do a level %d '%s'!" % (super, themove.fullname))
+                            return True
+                        if super > self.settings.maxsuperlevel:
+                            self.app.tell(player, "The max super-level is currently: %d" % self.settings.maxsuperlevel)
+                            return True
+                    # Validate magic usage
+                    mpcost = 0
+                    if themove.element != 'physical':
+                        mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
+                        if player.magicpoints < mpcost:
+                            self.app.tell(player, "You don't have enough Magic to do '%s'!" % move.fullname)
+                            return True
+                    # Queue the battle command
+                    bcommand = commands.battle.BattleCommand(self.app, player, themove, target, mpcost, super)
+                    player.current_move = bcommand
+                    do_time = self.gametime + battlecommand.tick_delay
+                    self.actions.append( (do_time, battlecommand) )
+                    return True
     
     def on_open_selection(self, gametype):
         if self.state == "idle":

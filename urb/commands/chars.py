@@ -1,3 +1,4 @@
+from urb.db import *
 from urb import commands
 from urb.colors import colorize
 from urb.util import dlog, metadata
@@ -42,8 +43,8 @@ Get information on a chararcter or character move.
                     mselector = move.selector
                     self.app.tell(self.player, move.info)
         else:
-            chars = [ char.selector for char in self.app.database.Character.all() if char.finalized != 0]
-            unfinished = [ char.selector for char in self.app.database.Character.all() if char.finalized == 0]
+            chars = [ char.selector for char in Character.all() if char.finalized != 0]
+            unfinished = [ char.selector for char in Character.all() if char.finalized == 0]
             self.app.tell(self.player,
             "Ultra Relay Battle - Character listing :")
             send = ""

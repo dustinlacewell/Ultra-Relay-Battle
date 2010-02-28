@@ -1,9 +1,9 @@
-from urb.gametypes import GameType
+from urb.gametypes import GameEngine
 
-class Survivor(GameType):
+class Survivor(GameEngine):
     name = "survivor"
 
-    def on_battle_finish(_self, self, winid):
+    def on_battle_finish(self, winid):
         team = self.get_team(winid)
         winner = team[0]
         self.app.signals['game_msg'].emit(
@@ -16,7 +16,7 @@ class Survivor(GameType):
             self.on_forfeit(theplayer)
         self.actions = []
         
-    def check_win_condition(_self, self):
+    def check_win_condition(self):
         alive = []
         for nickname, theplayer in self.fighters.iteritems():
             if theplayer.health > 0:

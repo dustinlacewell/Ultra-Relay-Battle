@@ -1,18 +1,20 @@
 import math, random
 
-#===============================================================================
-# MIN_CHAR_PHYS_STR = 25
-# MAX_CHAR_PHYS_STR = 100
-# 
-# MIN_CHAR_PHYS_DEF = 25
-# MAX_CHAR_PHYS_DEF = 100
-# 
-# MIN_CHAR_MAGI_STR = 25
-# MAX_CHAR_MAGI_STR = 100
-# 
-# MIN_CHAR_MAGI_DEF = 25
-# MAX_CHAR_MAGI_DEF = 100
-#===============================================================================
+MOTD = """
+Welcome to Ultra Relay Battle :
+
+You have succesfully logged in as %s. 
+There are currently %d other players online.
+If you need help getting started feel free to visit the URB website at
+http://ldlework.com/wiki/urb . The main channel #urb is also good for asking
+questions and getting to know people. You can see what commands are available
+to you at any time by issuing the 'help' command.
+
+If you're interested in helping the development of URB please write to:
+
+                     dlacewell@gmail.com
+    
+Have fun!"""
 
 #
 # Character Creation

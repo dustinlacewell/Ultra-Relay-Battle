@@ -63,76 +63,7 @@ class BattleContext(contexts.Context):
     """You're in battle!"""    
     
     def on_input(_self, self, command, args):
-        settings = self.app.game.settings
-        thechar = self.player.character
-        themoves = thechar.moves
-        super = 0
-        if '*' in command:
-            try:
-                command, super = command.split('*')
-                super = int(super)
-                if super > settings.maxsuperlevel:
-                    self.app.tell(self.player, "The max super-level is currently: %d" % settings.maxsuperlevel)
-                    return True
-            except:
-                self.app.tell(self.player,
-                   "Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
-
-        for move in themoves:
-            if move.selector == command:
-                if self.app.game.is_paused():
-                    self.app.tell(self.player,
-                    "The battle is paused, you'll have to wait to '%s'." % command)
-                    return True
-                elif self.player.health <= 0:
-                    self.app.tell(self.player,
-                    "You can't do '%s' when you're DEAD!" % move.fullname)
-                    return True
-                elif not self.app.game.is_ready(self.player):
-                    if self.player.current_move.target:
-                        self.app.tell(self.player,
-                        "You can't do '%s' while you're doing '%s' on %s." % (
-                        command, self.player.current_move.name,
-                        self.player.current_move.target))
-                    else:
-                        self.app.tell(self.player,
-                        "You can't do '%s' while you're doing '%s'." % (
-                        command, self.player.current_move.name))
-                    return True
-                elif self.app.game.is_ready(self.player):
-                    targetname = None
-                    if len(args) >= 1:
-                        targetname = args[0]
-                    else:
-                        targetname = self.app.game.get_target(self.player, move.target).nickname
-                        if not targetname:
-                            self.app.tell(self.player,
-                            "You couldn't find a valid target!")
-                            return True
-                    try:
-                        target = self.app.game.fighters[targetname]
-                        self.app.game.validate_target(self.player, target, move)
-                    except validation.ValidationError, e:
-                        self.app.tell(self.player, e.message)
-                        return True
-                    else:
-                        if super > 0:
-                            if not move.cansuper:
-                                self.app.tell(self.player, "The '%s' move can't be supered." % (move.fullname))
-                                return True
-                            if self.player.superpoints < super * 100:
-                                self.app.tell(self.player, "You don't have enough Super to do a level %d '%s'!" % (super, move.fullname))
-                                return True
-
-                        mpcost = 0
-                        if move.element != 'physical':
-                            mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
-                            if self.player.magicpoints < mpcost:
-                                self.app.tell(self.player, "You don't have enough Magic to do '%s'!" % move.fullname)
-                                return True
-                        bcommand = BattleCommand(self.app, self.player, move, target, mpcost, super)
-                        self.app.signals['battle_queue'].emit(bcommand)
-                        return True
+        return self.app.game.process_battle_input(self.player, command, args)
                     
     def com_exit(_self, self, args):
         """Cancel battle participation."""

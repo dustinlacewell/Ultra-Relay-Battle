@@ -134,31 +134,44 @@ class GameEngine(object):
         if "%TGT" in message and target:
             message = message.replace("%TGT", target.nickname)
         return message
-  
-    # ENGINE EVENT HANDLERS #
-    def get_signal_matrix(self):
-        return {
-            # Engine handlers
-            'ready' : self.on_ready,
-            # Game-type handlers
-            'battle_start' : self.on_battle_start,
-            'battle_pause' : self.on_battle_pause,
-            'battle_resume' : self.on_battle_resume,
-            'battle_abort' : self.on_battle_abort,
-            'battle_finish' : self.on_battle_finish,
-            'battle_damage' : self.on_battle_damage,
-            'battle_queue': self.on_battle_queue,
-            'battle_do': self.on_battle_do,
-            
-            
-        }
-     
         
+    def open_selection(self):
+        if self.state == "idle":
+            self.fighters = {}
+            self.state = "selection"
+            self.app.signals['global_msg'].emit(
+            "# Character Selection is now open for: %s." % self.name.capitalize())
+        elif self.state == "prebattle":
+            self.state = "selection"
+            self.app.signals['global_msg'].emit(
+            "# ! Battle delayed ---------------")
+            self.app.signals['global_msg'].emit(
+            "# Character Selection is now open for: %s." % self.name.capitalize())
+
+    def close_selection(self):
+        if self.state == "selection":
+            for nick, player in self.fighters.iteritems():
+                char = player.character.fullname if player.character else "NO CHAR"
+                self.app.signals['game_msg'].emit(
+                "%s(%s) - %d HP : %d MP : %d SP %s" % (
+                nick, char,  player.health, 
+                player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
+            if len(self.get_ready()) == len(self.fighters):
+                self.app.signals['global_msg'].emit(
+                "# Character Selection is now closed.")
+                self.state = "prebattle"
+            else:
+                self.app.signals['game_msg'].emit(
+                "##    Waiting for all players to READY.   ##")
+                unready = self.get_unready()
+                for theplayer in unready:
+                    player.tell("!! Battle is waiting on you to, 'ready' !!")
+     
     def player_signup(self, player, character):
         print "---------------------"
         if player in self.players:
             self.fighters[player.nickname] = player
-            self.on_prep_player(player)
+            self.prep_player(player)
             if character:
                 self.player_pick(player, character.selector)
             
@@ -175,7 +188,7 @@ class GameEngine(object):
                 join_msg = self.parse_message(player, char.selection_msg)
                 self.app.signals['game_msg'].emit(join_msg)  
                 
-    def on_ready(self, player):
+    def player_toggle_ready(self, player):
         if player.character:
             if player.ready:
                 player.current_move = "unready"
@@ -189,6 +202,18 @@ class GameEngine(object):
         else:
             player.tell("You cannot 'ready' until you 'pick' a character.")
             player.tell("Use 'chars' to get a list of available characters.")
+            
+    def prep_player(self, player):
+       if player in self.fighters:
+           player.character = None
+           player.current_move = "unready"
+           player.health = self.settings.starthealth
+           player.magicpoints = self.settings.startmagic
+           player.superpoints = self.settings.startsuper
+           player.team = self.next_team_id
+           self.next_team_id += 1
+           
+           player.session.switch('prebattle') 
             
     def process_battle_input(self, player, command, args):
         thechar = player.character
@@ -261,53 +286,8 @@ class GameEngine(object):
                     do_time = self.gametime + bcommand.tick_delay
                     self.actions.append( (do_time, bcommand) )
                     return True
-                
-    def on_prep_player(self, player):
-       if player in self.fighters:
-           player.character = None
-           player.current_move = "unready"
-           player.health = self.settings.starthealth
-           player.magicpoints = self.settings.startmagic
-           player.superpoints = self.settings.startsuper
-           player.team = self.next_team_id
-           self.next_team_id += 1
-           
-           player.session.switch('prebattle') 
-    
-    def on_open_selection(self):
-        if self.state == "idle":
-            self.fighters = {}
-            self.state = "selection"
-            self.app.signals['global_msg'].emit(
-            "# Character Selection is now open for: %s." % self.name.capitalize())
-        elif self.state == "prebattle":
-            self.state = "selection"
-            self.app.signals['global_msg'].emit(
-            "# ! Battle delayed ---------------")
-            self.app.signals['global_msg'].emit(
-            "# Character Selection is now open for: %s." % self.name.capitalize())
         
-    # GAMETYPE HANDLERS #    #    #        
-    def on_close_selection(self):
-        if self.state == "selection":
-            for nick, player in self.fighters.iteritems():
-                char = player.character.fullname if player.character else "NO CHAR"
-                self.app.signals['game_msg'].emit(
-                "%s(%s) - %d HP : %d MP : %d SP %s" % (
-                nick, char,  player.health, 
-                player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
-            if len(self.get_ready()) == len(self.fighters):
-                self.app.signals['global_msg'].emit(
-                "# Character Selection is now closed.")
-                self.state = "prebattle"
-            else:
-                self.app.signals['game_msg'].emit(
-                "##    Waiting for all players to READY.   ##")
-                unready = self.get_unready()
-                for theplayer in unready:
-                    player.tell("!! Battle is waiting on you to, 'ready' !!")
-        
-    def on_battle_start(self):
+    def start_battle(self):
         if self.state == "prebattle":
             unready = self.get_unready()
             for player in unready:
@@ -321,13 +301,13 @@ class GameEngine(object):
             "****  BATTLE HAS BEGUN ****")
             self.tick_timer.start(self.tickrate)
         
-    def on_battle_pause(self):
+    def pause_battle(self):
         pass
         
-    def on_battle_resume(self):
+    def resume_battle(self):
         pass
         
-    def on_battle_abort(self):
+    def abort_battle(self):
         if self.tick_timer.running:
             self.tick_timer.stop()
         self.actions = []
@@ -337,7 +317,7 @@ class GameEngine(object):
             self.player_forfeit(player)
             player.tell("**** BATTLE HAS BEEN ABORTED ****")
         
-    def on_battle_finish(self, winid):
+    def finish_battle(self, winid):
         team = self.get_team(winid)
         winner = team[0]
         self.app.signals['game_msg'].emit(
@@ -348,7 +328,7 @@ class GameEngine(object):
             self.player_forfeit(theplayer)
         self.actions = []
         
-    def on_battle_damage(self, player, target, damage, crit=0):
+    def battle_damage(self, player, target, damage, crit=0):
         totaldmg = damage + crit
         
         # Weakness / Resistance Modifications
@@ -389,13 +369,9 @@ class GameEngine(object):
         if player.current_move.move.element == "demi":
             self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)   
         elif player.current_move.move.element == "hpdrain":
-            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))    
+            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))
         
-
-    def on_battle_queue(self, battlecommand):
-        pass
-        
-    def on_battle_do(self, bcomm):
+    def battle_do(self, bcomm):
         #======================================================================
          # delegate_dict = {
          #                'physical':    self.on_battle_physical,
@@ -434,7 +410,7 @@ class GameEngine(object):
                     self.app.signals['game_msg'].emit(self.parse_message(
                         bcomm.target, bcomm.player.character.block_fail_msg, bcomm.player))
 
-            self.on_battle_damage(bcomm.player, bcomm.target, damage, critdamage) # int(self.move.power / 10))
+            self.battle_damage(bcomm.player, bcomm.target, damage, critdamage) # int(self.move.power / 10))
         else:
             bcomm.player.magicpoints -= bcomm.mpcost
             power = bcomm.move.power
@@ -443,14 +419,14 @@ class GameEngine(object):
             defense = bcomm.target.character.mdefense
             if bcomm.move.element == "heal":
                 healing = calculate_damage(strength, 25, power, maxhp) + int(random.randrange(-maxhp * 0.03, maxhp * 0.03))
-                self.app.signals['battle_damage'].emit(bcomm.player, bcomm.target, -healing)
+                self.battle_damage(bcomm.player, bcomm.target, -healing)
             elif bcomm.move.element == "demi":
                 targethp = bcomm.target.health
                 ratio = targethp / float(maxhp)
                 ratio = min(MAX_DEMI_RATIO, ratio)
                 if random.random() > ratio:
                     damage = int(targethp / 2.0)
-                    self.on_battle_damage(bcomm.player, bcomm.target, damage)
+                    self.battle_damage(bcomm.player, bcomm.target, damage)
                 else:
                     self.app.signals['game_msg'].emit(self.parse_message(
                         bcomm.player, bcomm.move.miss_msg, bcomm.target))
@@ -459,14 +435,14 @@ class GameEngine(object):
                 stolen = damage * (challenge_factor(strength, defense) - 1)
                 bcomm.player.health += stolen
                 bcomm.player.health = min(self.settings.maxhealth, bcomm.player.health)
-                self.on_battle_damage(bcomm.player, bcomm.target, damage)
+                self.battle_damage(bcomm.player, bcomm.target, damage)
     
     def tick(self):
         for fighter in self.fighters.values():
             fighter.magicpoints = min(self.settings.maxmagic, fighter.magicpoints + self.settings.mprate)
         winid = self.check_win_condition()
         if winid != None:
-            self.app.signals['battle_finish'].emit(winid)
+            self.app.game.finish_battle(winid)
         self.gametime += 1
         if self.actions:
             for action in list(self.actions):

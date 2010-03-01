@@ -15,6 +15,6 @@ Force the battle to begin.
         elif self.app.game.state == "battle":
             self.player.tell("The battle has already started.")
         else:
-            self.app.signals['battle_start'].emit()
+            self.app.game.start_battle()
             
 exported_class = StartBattleCommand

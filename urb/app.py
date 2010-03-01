@@ -33,21 +33,6 @@ class ApplicationClass(object):
         self.signals['debug_msg'      ] = Signal() # message
         self.signals['login'          ] = Signal() # nickname
         self.signals['logout'         ] = Signal() # nickname
-        self.signals['command'        ] = Signal() # player, command, args
-        self.signals['signup'         ] = Signal() # player
-        self.signals['forfeit'        ] = Signal() # nickname
-        self.signals['choose'         ] = Signal() # nickname, selector
-        self.signals['ready'          ] = Signal() # nickname
-        self.signals['open_selection' ] = Signal() # gametype
-        self.signals['close_selection'] = Signal() #
-        self.signals['battle_start'   ] = Signal() #
-        self.signals['battle_pause'   ] = Signal() #
-        self.signals['battle_resume'  ] = Signal() #
-        self.signals['battle_abort'   ] = Signal() #
-        self.signals['battle_finish'  ] = Signal() # 
-        self.signals['battle_queue'   ] = Signal() # command
-        self.signals['battle_do'      ] = Signal()
-        self.signals['battle_damage'  ] = Signal() # nickname, target, damage
 
         self.signals['global_msg'].register(self.on_global_msg)
         self.signals['game_msg'].register(self.on_game_msg)
@@ -80,13 +65,11 @@ class ApplicationClass(object):
             
     def set_game(self, gametype):
         self.game = gametype(self)
-        self._register_listeners(self.game)
-        self.game.on_open_selection()
+        self.game.open_selection()
         
     def unset_game(self):
         if self.game:
-            self._unregister_listeners(self.game)
-            self.game.on_battle_abort()
+            self.game.abort_battle()
             self.game = None
                     
     def _register_listeners(self, service):

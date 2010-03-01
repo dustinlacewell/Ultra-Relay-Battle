@@ -54,7 +54,7 @@ class PreBattleContext(contexts.Context):
         if self.app.game.state in ['prebattle']:
             self.player.tell("You can't do that now, battle is about to begin!")
         else:
-            self.app.signals['ready'].emit(self.player)
+            self.app.game.player_toggle_ready(self.player)
             
     def com_moves(_self, self, args):
         """Show a list of moves for your character."""

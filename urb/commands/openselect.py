@@ -16,7 +16,7 @@ Sign up for battle and choose a character!
             elif self.app.game.state == "battle":
                 self.player.tell("You can't open selection during battle.")
             else:
-                self.app.game.on_open_selection()
+                self.app.game.open_selection()
         else:
             if 'gametype' in self.args:
                 gtype = gametypes.get(self.args['gametype'])

@@ -44,7 +44,7 @@ class BattleCommand(commands.Command):
     
         
     def perform(self):
-        self.app.signals['battle_do'].emit(self)
+        self.app.game.battle_do(self)
         
         if self.target.health <= 0:
             death_msg = self.parse_message(self.target, self.target.character.death_msg, self.player)
@@ -54,7 +54,7 @@ class BattleCommand(commands.Command):
             target, target.health))
         winid = self.app.game.check_win_condition()
         if winid != None:
-            self.app.signals['battle_finish'].emit(winid)
+            self.app.game.finish_battle(winid)
         else:
             self.player.current_move = None
             self.app.signals['game_msg'].emit(self.player.status_msg)

@@ -115,7 +115,6 @@ class GameEngine(object):
             return True
         elif target and ttype in ['ally', 'enemy']:
             thetarget, left = validation.fighter(self.app, target.nickname, [target.nickname])    
-
             if ttype == "ally":
                 if player.is_enemy(thetarget):
                     raise ValidationError(
@@ -291,7 +290,7 @@ class GameEngine(object):
         themove = Move.get(selector=command)
         if themove in thechar.moves:
             # Check if battle is paused               
-            if self.is_paused():
+            if self.paused:
                 player.tell("The battle is paused, you'll have to wait to '%s'." % command)
                 return True
             # Check if player is alive
@@ -320,6 +319,7 @@ class GameEngine(object):
                # Validate the target against move-type
                 try:
                     target = self.fighters[targetname]
+                    print target
                     self.validate_target(player, target, themove)
                 except validation.ValidationError, e:
                     player.tell(e.message)
@@ -349,49 +349,6 @@ class GameEngine(object):
                     do_time = self.gametime + bcommand.tick_delay
                     self.actions.append( (do_time, bcommand) )
                     return True
-        
-    def battle_damage(self, player, target, damage, crit=0):
-        totaldmg = damage + crit
-        
-        # Weakness / Resistance Modifications
-        if player.current_move.move.element not in ['demi', 'heal']:
-            element = player.current_move.move.element
-            if element == target.character.weakness:
-                totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
-                self.app.signals['game_msg'].emit("%s's '%s' is super effective against %s!" %
-                    player, player.current_move.move.fullname, target)
-            elif element == target.character.resistance:
-                totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
-                self.app.signals['game_msg'].emit("%s's '%s' isn't effective against %s!" %
-                    player, player.current_move.move.fullname, target)
-        # Attacker Earn Super-Points        
-        player.superpoints += int(totaldmg / 20.0)
-        player.superpoints = min(self.settings.maxsuper, player.superpoints)
-        # Apply Damage
-        target.health -= totaldmg
-        target.health = min(self.settings.maxhealth, target.health)
-        # Target Earn Super-Points
-        target.superpoints += int(totaldmg / 10.0)
-        target.superpoints = min(self.settings.maxsuper, target.superpoints)
-        
-        # Emit Hit/Critical Messages        
-        if player.current_move.super:
-            hit_msg = self.parse_message(player, player.current_move.move.supr_hit_msg, target)
-        else:
-            if crit:
-                hit_msg = self.parse_message(player, player.current_move.move.crit_hit_msg, target)
-            else:
-                hit_msg = self.parse_message(player, player.current_move.move.hit_msg, target)
-        if crit:
-            hit_msg = "%s [%d+%d crit]" % (hit_msg, abs(damage), crit)
-        elif damage:
-            hit_msg = "%s [%d]" % (hit_msg, abs(damage))     
-        self.app.signals['game_msg'].emit(hit_msg)
-        # Element Specific Descriptions
-        if player.current_move.move.element == "demi":
-            self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)   
-        elif player.current_move.move.element == "hpdrain":
-            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))
         
     def battle_do(self, bcomm):
         #======================================================================
@@ -458,3 +415,59 @@ class GameEngine(object):
                 bcomm.player.health += stolen
                 bcomm.player.health = min(self.settings.maxhealth, bcomm.player.health)
                 self.battle_damage(bcomm.player, bcomm.target, damage)
+                
+        if bcomm.target.health <= 0:
+            death_msg = self.parse_message(bcomm.target, bcomm.target.character.death_msg, bcomm.player)
+            self.app.signals['game_msg'].emit(death_msg)
+            self.app.signals['game_msg'].emit(
+            "Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (
+            bcomm.target, bcomm.target.health))
+        winid = self.app.game.check_win_condition()
+        if winid != None:
+            self.finish_battle(winid)
+        else:
+            bcomm.player.current_move = None
+            self.app.signals['game_msg'].emit(bcomm.player.status_msg)
+                
+    def battle_damage(self, player, target, damage, crit=0):
+        totaldmg = damage + crit
+        
+        # Weakness / Resistance Modifications
+        if player.current_move.move.element not in ['demi', 'heal']:
+            element = player.current_move.move.element
+            if element == target.character.weakness:
+                totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
+                self.app.signals['game_msg'].emit("%s's '%s' is super effective against %s!" %
+                    player, player.current_move.move.fullname, target)
+            elif element == target.character.resistance:
+                totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
+                self.app.signals['game_msg'].emit("%s's '%s' isn't effective against %s!" %
+                    player, player.current_move.move.fullname, target)
+        # Attacker Earn Super-Points        
+        player.superpoints += int(totaldmg / 20.0)
+        player.superpoints = min(self.settings.maxsuper, player.superpoints)
+        # Apply Damage
+        target.health -= totaldmg
+        target.health = min(self.settings.maxhealth, target.health)
+        # Target Earn Super-Points
+        target.superpoints += int(totaldmg / 10.0)
+        target.superpoints = min(self.settings.maxsuper, target.superpoints)
+        
+        # Emit Hit/Critical Messages        
+        if player.current_move.super:
+            hit_msg = self.parse_message(player, player.current_move.move.supr_hit_msg, target)
+        else:
+            if crit:
+                hit_msg = self.parse_message(player, player.current_move.move.crit_hit_msg, target)
+            else:
+                hit_msg = self.parse_message(player, player.current_move.move.hit_msg, target)
+        if crit:
+            hit_msg = "%s [%d+%d crit]" % (hit_msg, abs(damage), crit)
+        elif damage:
+            hit_msg = "%s [%d]" % (hit_msg, abs(damage))     
+        self.app.signals['game_msg'].emit(hit_msg)
+        # Element Specific Descriptions
+        if player.current_move.move.element == "demi":
+            self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)   
+        elif player.current_move.move.element == "hpdrain":
+            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))

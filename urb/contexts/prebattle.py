@@ -19,7 +19,7 @@ class PreBattleContext(contexts.Context):
     def com_exit(_self, self, args):
         """Cancel battle participation."""
         _self.com_oops(self, {})
-        self.app.game.player_forefeit(self.player)
+        self.app.game.player_forfeit(self.player)
             
     @metadata(adminlevel=commands.PLAYER, schema=(('char','selector'),))
     def com_pick(_self, self, args):

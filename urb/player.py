@@ -68,7 +68,7 @@ class Player(object):
             self.app.signals['game_msg'].emit(self.status_msg) 
             
     def is_enemy(self, player):
-        return player.team == self.team
+        return player.team != self.team
     
     
             

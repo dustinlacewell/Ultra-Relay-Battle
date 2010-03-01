@@ -21,22 +21,16 @@ class BlockCommand(commands.Command):
 
 class BattleCommand(commands.Command):
     
-    def __init__(self, app, player, move, target, mpcost=0, super=0):
+    def __init__(self, app, player, move, target, delay, mpcost=0, super=0):
         self.app = app
         self.player = player
         self.move = move
         self.target = target
         self.mpcost = mpcost
         self.super = super
-        self.alive =  True
-        
-        self.tick_delay = int(self.move.power / 10)
-        if super:
-            prepare_msg = self.app.game.parse_message(self.player, self.move.supr_prepare_msg, target=target)
-            prepare_msg = ("L%d SUPER ~ " % super) + prepare_msg
-        else:
-            prepare_msg = self.app.game.parse_message(self.player, self.move.prepare_msg, target=target)
-        self.app.signals['game_msg'].emit(prepare_msg)
+        self.alive =  True        
+        self.tick_delay = delay
+
         
     def _get_name(self):
         return self.move.fullname

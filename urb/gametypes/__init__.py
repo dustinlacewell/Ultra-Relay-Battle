@@ -343,8 +343,17 @@ class GameEngine(object):
                         if player.magicpoints < mpcost:
                             player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
                             return True
+                    # Calculate Delay
+                    delay = int(self.move.power / 10)
+                    # Output action strings
+                    if super:
+                        prepare_msg = self.app.game.parse_message(self.player, self.move.supr_prepare_msg, target=target)
+                        prepare_msg = ("L%d SUPER ~ " % super) + prepare_msg
+                    else:
+                        prepare_msg = self.app.game.parse_message(self.player, self.move.prepare_msg, target=target)
+                    self.app.signals['game_msg'].emit(prepare_msg)
                     # Queue the battle command
-                    bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, mpcost, super)
+                    bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, delay, mpcost, super)
                     player.current_move = bcommand
                     do_time = self.gametime + bcommand.tick_delay
                     self.actions.append( (do_time, bcommand) )

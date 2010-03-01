@@ -41,14 +41,56 @@ class GameEngine(object):
             gs = GameSettings.create(self.name)
         return gs 
     settings = property(_get_settings)
-    
-    def check_win_condition(self):
-        pass
             
     def _get_paused(self):
         return not self.tick_timer.running
     paused = property(_get_paused)
+            
+    def get_ready(self):
+        ready = []
+        for nick, theplayer in self.fighters.iteritems():
+            if theplayer.ready == True:
+                ready.append(theplayer)
+        return ready
         
+    def get_unready(self):
+        unready = []
+        for nick, theplayer in self.fighters.iteritems():
+            if theplayer.ready == False:
+                unready.append(theplayer)
+        return unready
+        
+    def get_team(self, id):
+        theteam = []
+        for nick, theplayer in self.fighters.iteritems():
+            if theplayer.team == id:
+                theteam.append(theplayer)
+        return theteam
+        
+    def get_allies(self, player):
+        theteam = self.get_team(player.team)
+        theteam.remove(player)
+        return theteam
+        
+    def get_enemies(self, player):
+        enemies = []
+        for nick, otherplayer in self.fighters.iteritems():
+            if otherplayer.team != player.team:
+                enemies.append(otherplayer)
+        return enemies
+                
+    def parse_message(self, player, message, target=None):
+        if "%NIK" in message:
+            message = message.replace("%NIK", player.nickname)
+        if "%CHR" in message and player.character:
+            message = message.replace("%CHR",  player.character.fullname)
+        if "%TGT" in message and target:
+            message = message.replace("%TGT", target.nickname)
+        return message
+    
+    def check_win_condition(self):
+        pass
+    
     def find_target(self, player, ttype):
         if ttype == 'ally':
             allies = self.get_allies(player)
@@ -92,48 +134,6 @@ class GameEngine(object):
                     "%s is already dead. What good would that do?" % targetname)
                 else:
                     return True
-            
-    def get_ready(self):
-        ready = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.ready == True:
-                ready.append(theplayer)
-        return ready
-        
-    def get_unready(self):
-        unready = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.ready == False:
-                unready.append(theplayer)
-        return unready
-        
-    def get_team(self, id):
-        theteam = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.team == id:
-                theteam.append(theplayer)
-        return theteam
-        
-    def get_allies(self, player):
-        theteam = self.get_team(player.team)
-        theteam.remove(player)
-        return theteam
-        
-    def get_enemies(self, player):
-        enemies = []
-        for nick, otherplayer in self.fighters.iteritems():
-            if otherplayer.team != player.team:
-                enemies.append(otherplayer)
-        return enemies
-                
-    def parse_message(self, player, message, target=None):
-        if "%NIK" in message:
-            message = message.replace("%NIK", player.nickname)
-        if "%CHR" in message and player.character:
-            message = message.replace("%CHR",  player.character.fullname)
-        if "%TGT" in message and target:
-            message = message.replace("%TGT", target.nickname)
-        return message
         
     def open_selection(self):
         if self.state == "idle":
@@ -214,6 +214,69 @@ class GameEngine(object):
            self.next_team_id += 1
            
            player.session.switch('prebattle') 
+           
+    def tick(self):
+        for fighter in self.fighters.values():
+            fighter.magicpoints = min(self.settings.maxmagic, fighter.magicpoints + self.settings.mprate)
+        winid = self.check_win_condition()
+        if winid != None:
+            self.app.game.finish_battle(winid)
+        self.gametime += 1
+        if self.actions:
+            for action in list(self.actions):
+                if action[0] <= self.gametime:
+                    if action[1].alive:
+                        action[1].alive = False
+                        action[1].perform()
+                if not action[1].alive:
+                    self.actions.remove(action)
+                        
+    def start_battle_timers(self):
+        self.tick_timer.start(self.tickrate)
+    
+    def stop_battle_timers(self):
+        self.tick_timer.stop()
+           
+    def start_battle(self):
+        if self.state == "prebattle":
+            unready = self.get_unready()
+            for player in unready:
+                self.app.signals['game_msg'].emit(
+                "%s was dropped from the battle." % player)
+                self.player_forfeit(player)
+                player.tell("You were dropped from battle for not being ready.")
+            for nickname, player in self.fighters.iteritems():
+                player.session.switch('battle')
+            self.app.signals['game_msg'].emit(
+            "****  BATTLE HAS BEGUN ****")
+            self.tick_timer.start(self.tickrate)
+        
+    def pause_battle(self):
+        pass
+        
+    def resume_battle(self):
+        pass
+        
+    def abort_battle(self):
+        if self.tick_timer.running:
+            self.tick_timer.stop()
+        self.actions = []
+        self.app.signals['game_msg'].emit(
+        "**** BATTLE HAS BEEN ABORTED ****")
+        for nick, player in list(self.fighters.iteritems()):
+            self.player_forfeit(player)
+            player.tell("**** BATTLE HAS BEEN ABORTED ****")
+        
+    def finish_battle(self, winid):
+        team = self.get_team(winid)
+        winner = team[0]
+        self.app.signals['game_msg'].emit(
+        "****  ! BATTLE IS OVER !  ****")
+        self.state = "idle"
+        self.tick_timer.stop()
+        for nick, theplayer in list(self.fighters.iteritems()):
+            self.player_forfeit(theplayer)
+        self.actions = []
             
     def process_battle_input(self, player, command, args):
         thechar = player.character
@@ -286,47 +349,6 @@ class GameEngine(object):
                     do_time = self.gametime + bcommand.tick_delay
                     self.actions.append( (do_time, bcommand) )
                     return True
-        
-    def start_battle(self):
-        if self.state == "prebattle":
-            unready = self.get_unready()
-            for player in unready:
-                self.app.signals['game_msg'].emit(
-                "%s was dropped from the battle." % player)
-                self.player_forfeit(player)
-                player.tell("You were dropped from battle for not being ready.")
-            for nickname, player in self.fighters.iteritems():
-                player.session.switch('battle')
-            self.app.signals['game_msg'].emit(
-            "****  BATTLE HAS BEGUN ****")
-            self.tick_timer.start(self.tickrate)
-        
-    def pause_battle(self):
-        pass
-        
-    def resume_battle(self):
-        pass
-        
-    def abort_battle(self):
-        if self.tick_timer.running:
-            self.tick_timer.stop()
-        self.actions = []
-        self.app.signals['game_msg'].emit(
-        "**** BATTLE HAS BEEN ABORTED ****")
-        for nick, player in list(self.fighters.iteritems()):
-            self.player_forfeit(player)
-            player.tell("**** BATTLE HAS BEEN ABORTED ****")
-        
-    def finish_battle(self, winid):
-        team = self.get_team(winid)
-        winner = team[0]
-        self.app.signals['game_msg'].emit(
-        "****  ! BATTLE IS OVER !  ****")
-        self.state = "idle"
-        self.tick_timer.stop()
-        for nick, theplayer in list(self.fighters.iteritems()):
-            self.player_forfeit(theplayer)
-        self.actions = []
         
     def battle_damage(self, player, target, damage, crit=0):
         totaldmg = damage + crit
@@ -436,25 +458,3 @@ class GameEngine(object):
                 bcomm.player.health += stolen
                 bcomm.player.health = min(self.settings.maxhealth, bcomm.player.health)
                 self.battle_damage(bcomm.player, bcomm.target, damage)
-    
-    def tick(self):
-        for fighter in self.fighters.values():
-            fighter.magicpoints = min(self.settings.maxmagic, fighter.magicpoints + self.settings.mprate)
-        winid = self.check_win_condition()
-        if winid != None:
-            self.app.game.finish_battle(winid)
-        self.gametime += 1
-        if self.actions:
-            for action in list(self.actions):
-                if action[0] <= self.gametime:
-                    if action[1].alive:
-                        action[1].alive = False
-                        action[1].perform()
-                if not action[1].alive:
-                    self.actions.remove(action)
-                        
-    def start_battle_timers(self):
-        self.tick_timer.start(self.tickrate)
-    
-    def stop_battle_timers(self):
-        self.tick_timer.stop()

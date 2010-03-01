@@ -43,10 +43,11 @@ class GameEngine(object):
     settings = property(_get_settings)
     
     def check_win_condition(self):
-        return self.check_win_condition()
+        pass
             
-    def is_paused(self):
+    def _get_paused(self):
         return not self.tick_timer.running
+    paused = property(_get_paused)
         
     def find_target(self, player, ttype):
         if ttype == 'ally':
@@ -133,16 +134,11 @@ class GameEngine(object):
         if "%TGT" in message and target:
             message = message.replace("%TGT", target.nickname)
         return message
-    
-    
-        
+  
     # ENGINE EVENT HANDLERS #
     def get_signal_matrix(self):
         return {
             # Engine handlers
-            'choose' : self.on_choose,
-            'signup' : self.on_signup,
-            'forfeit' : self.on_forfeit,
             'ready' : self.on_ready,
             # Game-type handlers
             'battle_start' : self.on_battle_start,
@@ -158,20 +154,20 @@ class GameEngine(object):
         }
      
         
-    def on_signup(self, player, character):
+    def player_signup(self, player, character):
         print "---------------------"
         if player in self.players:
             self.fighters[player.nickname] = player
             self.on_prep_player(player)
             if character:
-                self.on_choose(player, character.selector)
+                self.player_pick(player, character.selector)
             
-    def on_forfeit(self, player):
+    def player_forfeit(self, player):
         if player in self.fighters:
             player.session.switch('mainmenu')
             del self.fighters[player.nickname]
         
-    def on_choose(self, player, selector):
+    def player_pick(self, player, selector):
         if player in self.fighters:
             char = Character.get(selector=selector)
             if char:
@@ -184,15 +180,15 @@ class GameEngine(object):
             if player.ready:
                 player.current_move = "unready"
                 self.app.signals['game_msg'].emit("# ! - %s is no longer ready!" % player.nickname)
-                self.player.tell("You are no longer ready for battle.")
+                player.tell("You are no longer ready for battle.")
             else:
                 player.current_move = None
-                self.player.tell("You are now ready for battle.")
+                player.tell("You are now ready for battle.")
                 if len(self.get_ready()) == len(self.fighters):
                     self.app.signals['game_msg'].emit("## All players are READY! ##")
         else:
-            self.player.tell("You cannot 'ready' until you 'pick' a character.")
-            self.player.tell("Use 'chars' to get a list of available characters.")
+            player.tell("You cannot 'ready' until you 'pick' a character.")
+            player.tell("Use 'chars' to get a list of available characters.")
             
     def process_battle_input(self, player, command, args):
         thechar = player.character
@@ -203,25 +199,25 @@ class GameEngine(object):
                 command, super = command.split('*')
                 super = int(super)
             except:
-                self.player.tell("Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
+                player.tell("Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
         themove = Move.get(selector=command)
         if themove in thechar.moves:
             # Check if battle is paused               
             if self.is_paused():
-                self.player.tell("The battle is paused, you'll have to wait to '%s'." % command)
+                player.tell("The battle is paused, you'll have to wait to '%s'." % command)
                 return True
             # Check if player is alive
             elif player.health <= 0:
-                self.player.tell("You can't do '%s' when you're DEAD!" % themove.fullname)
+                player.tell("You can't do '%s' when you're DEAD!" % themove.fullname)
                 return True
             # Check if player is ready
             elif not player.ready:
                 if player.current_move.target:
-                    self.player.tell("You can't do '%s' while you're doing '%s' on %s." % (
+                    player.tell("You can't do '%s' while you're doing '%s' on %s." % (
                     command, player.current_move.name,
                     player.current_move.target))
                 else:
-                    self.player.tell("You can't do '%s' while you're doing '%s'." % (
+                    player.tell("You can't do '%s' while you're doing '%s'." % (
                     command, player.current_move.name))
                 return True
             # Player is ready
@@ -231,33 +227,33 @@ class GameEngine(object):
                 if not targetname:
                     targetname = self.find_target(player, themove.target).nickname
                     if not targetname:
-                        self.player.tell("You couldn't find a valid target!")
+                        player.tell("You couldn't find a valid target!")
                         return True
                # Validate the target against move-type
                 try:
                     target = self.fighters[targetname]
                     self.validate_target(player, target, themove)
                 except validation.ValidationError, e:
-                    self.player.tell(e.message)
+                    player.tell(e.message)
                     return True
                 else:
                     # Validate super usage
                     if super > 0:
                         if not themove.cansuper:
-                            self.player.tell("The '%s' move can't be supered." % (themove.fullname))
+                            player.tell("The '%s' move can't be supered." % (themove.fullname))
                             return True
                         if player.superpoints < super * 100:
-                            self.player.tell("You don't have enough Super to do a level %d '%s'!" % (super, themove.fullname))
+                            player.tell("You don't have enough Super to do a level %d '%s'!" % (super, themove.fullname))
                             return True
                         if super > self.settings.maxsuperlevel:
-                            self.player.tell("The max super-level is currently: %d" % self.settings.maxsuperlevel)
+                            player.tell("The max super-level is currently: %d" % self.settings.maxsuperlevel)
                             return True
                     # Validate magic usage
                     mpcost = 0
                     if themove.element != 'physical':
                         mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
                         if player.magicpoints < mpcost:
-                            self.player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
+                            player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
                             return True
                     # Queue the battle command
                     bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, mpcost, super)
@@ -309,7 +305,7 @@ class GameEngine(object):
                 "##    Waiting for all players to READY.   ##")
                 unready = self.get_unready()
                 for theplayer in unready:
-                    self.player.tell("!! Battle is waiting on you to, 'ready' !!")
+                    player.tell("!! Battle is waiting on you to, 'ready' !!")
         
     def on_battle_start(self):
         if self.state == "prebattle":
@@ -317,8 +313,8 @@ class GameEngine(object):
             for player in unready:
                 self.app.signals['game_msg'].emit(
                 "%s was dropped from the battle." % player)
-                self.on_forfeit(player)
-                self.player.tell("You were dropped from battle for not being ready.")
+                self.player_forfeit(player)
+                player.tell("You were dropped from battle for not being ready.")
             for nickname, player in self.fighters.iteritems():
                 player.session.switch('battle')
             self.app.signals['game_msg'].emit(
@@ -338,8 +334,8 @@ class GameEngine(object):
         self.app.signals['game_msg'].emit(
         "**** BATTLE HAS BEEN ABORTED ****")
         for nick, player in list(self.fighters.iteritems()):
-            self.on_forfeit(player)
-            self.player.tell("**** BATTLE HAS BEEN ABORTED ****")
+            self.player_forfeit(player)
+            player.tell("**** BATTLE HAS BEEN ABORTED ****")
         
     def on_battle_finish(self, winid):
         team = self.get_team(winid)
@@ -349,7 +345,7 @@ class GameEngine(object):
         self.state = "idle"
         self.tick_timer.stop()
         for nick, theplayer in list(self.fighters.iteritems()):
-            self.on_forfeit(theplayer)
+            self.player_forfeit(theplayer)
         self.actions = []
         
     def on_battle_damage(self, player, target, damage, crit=0):

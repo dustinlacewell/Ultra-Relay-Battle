@@ -13,7 +13,7 @@ class Survivor(GameEngine):
         self.state = "idle"
         self.tick_timer.stop()
         for nick, theplayer in list(self.fighters.iteritems()):
-            self.on_forfeit(theplayer)
+            self.player_forfeit(theplayer)
         self.actions = []
         
     def check_win_condition(self):

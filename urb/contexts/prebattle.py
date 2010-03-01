@@ -19,7 +19,7 @@ class PreBattleContext(contexts.Context):
     def com_exit(_self, self, args):
         """Cancel battle participation."""
         _self.com_oops(self, {})
-        self.app.signals['forfeit'].emit(self.player)
+        self.app.game.player_forefeit(self.player)
             
     @metadata(adminlevel=commands.PLAYER, schema=(('char','selector'),))
     def com_pick(_self, self, args):
@@ -27,7 +27,7 @@ class PreBattleContext(contexts.Context):
         if args['selector'].finalized == 0:
             self.player.tell("'%s' is not a valid character selector." % args['selector'].selector)
         else:
-            self.app.signals['choose'].emit(self.player, args['selector'].selector)
+            self.app.game.player_pick(self.player, args['selector'].selector)
             self.player.tell("Make sure to 'ready' up if you're prepared for battle.")
         
     def com_oops(_self, self, args):

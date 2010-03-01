@@ -67,7 +67,7 @@ class BattleContext(contexts.Context):
                     
     def com_exit(_self, self, args):
         """Cancel battle participation."""
-        self.app.signals['forfeit'].emit(self.player)
+        self.app.game.player_forfeit(self.player)
                         
     def com_roster(_self, self, args):
         """Get the current battle roster."""

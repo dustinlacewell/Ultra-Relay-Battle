@@ -218,7 +218,7 @@ class ApplicationClass(object):
         
     def on_logout(self, nickname):
         if self.game and nickname in self.game.fighters:
-            self.game.on_forfeit(nickname)
+            self.game.player_forfeit(nickname)
         if nickname in self.players:
             del self.players[nickname]
     

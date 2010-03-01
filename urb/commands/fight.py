@@ -14,7 +14,7 @@ Sign up for battle and choose a character!
             if self.player in self.app.game.fighters:
                 self.player.tell("You're already a participant in battle.")
             elif self.app.game.state == 'selection':
-                self.app.signals['signup'].emit(self.player, self.args['selector'] if self.args else None)
+                self.app.game.player_signup(self.player, self.args['selector'] if self.args else None)
             else:
                 self.player.tell("Character selection isn't currently open right now.")
         else:

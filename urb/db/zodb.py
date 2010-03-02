@@ -179,6 +179,9 @@ class Character( DBObject ):
         
         self.finalized         = 0
         
+    def __str__(self):
+        return self.fullname
+        
     @classmethod
     def create(cls, selector):
         newchar = cls(selector)

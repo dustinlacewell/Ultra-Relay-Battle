@@ -3,7 +3,7 @@ import math
 
 from urb import contexts, commands, validation
 from urb.colors import colorize
-from urb.util import dlog, metadata
+from urb.util import dlog, metadata, render
 from urb.constants import *
 
 class BlockCommand(commands.Command):
@@ -11,8 +11,7 @@ class BlockCommand(commands.Command):
         self.app = app
         self.player = player
         self.target = None
-        self.app.signals['game_msg'].emit(self.app.game.parse_message(
-            self.player, player.character.block_begin_msg))
+        self.app.gtell(render(player.character.block_begin_msg, self.player))
         
     def _get_name(self):
         return 'Block'

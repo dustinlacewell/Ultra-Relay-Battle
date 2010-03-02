@@ -23,3 +23,7 @@ def dtrace(message):
     traceback.print_exception(sys.exc_type, sys.exc_value, sys.exc_traceback, 99, trace)
     for line in trace.getvalue().split('\n'):
         dlog(line)
+        
+        
+def render(message, player=None, target=None, move=None, damage=None, crit=None):
+        return message.format(p=player, c=player.character, t=target, m=move, d=damage, cr=crit)

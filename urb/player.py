@@ -62,10 +62,10 @@ class Player(object):
         if self.ready:
             self.tell("You're not doing anything yet!")
         else:
-            self.app.signals['game_msg'].emit("%s stops doing '%s'." % (self.nickname, self.current_move.name))
+            self.app.gtell("%s stops doing '%s'." % (self.nickname, self.current_move.name))
             self.current_move.alive = False
             self.current_move = None
-            self.app.signals['game_msg'].emit(self.status_msg) 
+            self.app.gtell(self.status_msg) 
             
     def is_enemy(self, player):
         return player.team != self.team

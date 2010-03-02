@@ -7,7 +7,7 @@ from urb.constants import *
 from urb import imports, commands, validation, contexts
 from urb.validation import ValidationError
 from urb.player import Player, Session
-from urb.util import dlog, dtrace
+from urb.util import dlog, dtrace, render
 
 def refresh( gametype_name ):
     return imports.refresh(gametype_name)
@@ -79,14 +79,7 @@ class GameEngine(object):
                 enemies.append(otherplayer)
         return enemies
                 
-    def parse_message(self, player, message, target=None):
-        if "%NIK" in message:
-            message = message.replace("%NIK", player.nickname)
-        if "%CHR" in message and player.character:
-            message = message.replace("%CHR",  player.character.fullname)
-        if "%TGT" in message and target:
-            message = message.replace("%TGT", target.nickname)
-        return message
+    
     
     def check_win_condition(self):
         pass
@@ -151,17 +144,16 @@ class GameEngine(object):
         if self.state == "selection":
             for nick, player in self.fighters.iteritems():
                 char = player.character.fullname if player.character else "NO CHAR"
-                self.app.signals['game_msg'].emit(
-                "%s(%s) - %d HP : %d MP : %d SP %s" % (
-                nick, char,  player.health, 
-                player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
+                self.app.gtell("%s(%s) - %d HP : %d MP : %d SP %s" % (
+                    nick, char,  player.health, 
+                    player.magicpoints, player.superpoints, 
+                    ": READY" if player.ready else ""))
             if len(self.get_ready()) == len(self.fighters):
                 self.app.signals['global_msg'].emit(
                 "# Character Selection is now closed.")
                 self.state = "prebattle"
             else:
-                self.app.signals['game_msg'].emit(
-                "##    Waiting for all players to READY.   ##")
+                self.app.gtell("##    Waiting for all players to READY.   ##")
                 unready = self.get_unready()
                 for theplayer in unready:
                     player.tell("!! Battle is waiting on you to, 'ready' !!")
@@ -184,20 +176,20 @@ class GameEngine(object):
             char = Character.get(selector=selector)
             if char:
                 player.character = char
-                join_msg = self.parse_message(player, char.selection_msg)
-                self.app.signals['game_msg'].emit(join_msg)  
+                join_msg = render(char.selection_msg, player)
+                self.app.gtell(join_msg)  
                 
     def player_toggle_ready(self, player):
         if player.character:
             if player.ready:
                 player.current_move = "unready"
-                self.app.signals['game_msg'].emit("# ! - %s is no longer ready!" % player.nickname)
+                self.app.gtell("# ! - %s is no longer ready!" % player.nickname)
                 player.tell("You are no longer ready for battle.")
             else:
                 player.current_move = None
                 player.tell("You are now ready for battle.")
                 if len(self.get_ready()) == len(self.fighters):
-                    self.app.signals['game_msg'].emit("## All players are READY! ##")
+                    self.app.gtell("## All players are READY! ##")
         else:
             player.tell("You cannot 'ready' until you 'pick' a character.")
             player.tell("Use 'chars' to get a list of available characters.")
@@ -240,14 +232,12 @@ class GameEngine(object):
         if self.state == "prebattle":
             unready = self.get_unready()
             for player in unready:
-                self.app.signals['game_msg'].emit(
-                "%s was dropped from the battle." % player)
+                self.app.gtell("%s was dropped from the battle." % player)
                 self.player_forfeit(player)
                 player.tell("You were dropped from battle for not being ready.")
             for nickname, player in self.fighters.iteritems():
                 player.session.switch('battle')
-            self.app.signals['game_msg'].emit(
-            "****  BATTLE HAS BEGUN ****")
+            self.app.gtell("****  BATTLE HAS BEGUN ****")
             self.tick_timer.start(self.tickrate)
         
     def pause_battle(self):
@@ -260,8 +250,7 @@ class GameEngine(object):
         if self.tick_timer.running:
             self.tick_timer.stop()
         self.actions = []
-        self.app.signals['game_msg'].emit(
-        "**** BATTLE HAS BEEN ABORTED ****")
+        self.app.gtell("**** BATTLE HAS BEEN ABORTED ****")
         for nick, player in list(self.fighters.iteritems()):
             self.player_forfeit(player)
             player.tell("**** BATTLE HAS BEEN ABORTED ****")
@@ -269,8 +258,7 @@ class GameEngine(object):
     def finish_battle(self, winid):
         team = self.get_team(winid)
         winner = team[0]
-        self.app.signals['game_msg'].emit(
-        "****  ! BATTLE IS OVER !  ****")
+        self.app.gtell("****  ! BATTLE IS OVER !  ****")
         self.state = "idle"
         self.tick_timer.stop()
         for nick, theplayer in list(self.fighters.iteritems()):
@@ -347,11 +335,11 @@ class GameEngine(object):
                     delay = int(self.move.power / 10)
                     # Output action strings
                     if super:
-                        prepare_msg = self.app.game.parse_message(self.player, self.move.supr_prepare_msg, target=target)
+                        prepare_msg = render(self.move.supr_prepare_msg, self.player, target)
                         prepare_msg = ("L%d SUPER ~ " % super) + prepare_msg
                     else:
-                        prepare_msg = self.app.game.parse_message(self.player, self.move.prepare_msg, target=target)
-                    self.app.signals['game_msg'].emit(prepare_msg)
+                        prepare_msg = render(self.move.prepare_msg, self.player, target)
+                    self.app.gtell(prepare_msg)
                     # Queue the battle command
                     bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, delay, mpcost, super)
                     player.current_move = bcommand
@@ -389,14 +377,12 @@ class GameEngine(object):
             if targetp.current_move and targetp.current_move.name == 'Block':
                 if random.randint(0, 2) == 0:
                     damage = 0
-                    self.app.signals['game_msg'].emit(self.parse_message(
-                        bcomm.target, bcomm.player.character.block_success_msg, bcomm.player))
+                    self.app.gtell(render(bcomm.player.character.block_success_msg, bcomm.target, bcomm.player))
                     bcomm.player.current_move = None
                     return
                 else:
                     damage = int(damage * (2 / 3.0))
-                    self.app.signals['game_msg'].emit(self.parse_message(
-                        bcomm.target, bcomm.player.character.block_fail_msg, bcomm.player))
+                    self.app.gtell(render(bcomm.player.character.block_fail_msg, bcomm.target, bcomm.player))
 
             self.battle_damage(bcomm.player, bcomm.target, damage, critdamage) # int(self.move.power / 10))
         else:
@@ -416,8 +402,7 @@ class GameEngine(object):
                     damage = int(targethp / 2.0)
                     self.battle_damage(bcomm.player, bcomm.target, damage)
                 else:
-                    self.app.signals['game_msg'].emit(self.parse_message(
-                        bcomm.player, bcomm.move.miss_msg, bcomm.target))
+                    self.app.gtell(render(bcomm.move.miss_msg, bcomm.player, bcomm.target))
             elif bcomm.move.element == "hpdrain":
                 damage = calculate_damage(strength, defense, power, maxhp)+ int(random.randrange(-maxhp * 0.01, maxhp * 0.01))
                 stolen = damage * (challenge_factor(strength, defense) - 1)
@@ -426,17 +411,15 @@ class GameEngine(object):
                 self.battle_damage(bcomm.player, bcomm.target, damage)
                 
         if bcomm.target.health <= 0:
-            death_msg = self.parse_message(bcomm.target, bcomm.target.character.death_msg, bcomm.player)
-            self.app.signals['game_msg'].emit(death_msg)
-            self.app.signals['game_msg'].emit(
-            "Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (
-            bcomm.target, bcomm.target.health))
+            death_msg = render(bcomm.target.character.death_msg, bcomm.target, bcomm.player)
+            self.app.gtell(death_msg)
+            self.app.gtell("Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (bcomm.target, bcomm.target.health))
         winid = self.app.game.check_win_condition()
         if winid != None:
             self.finish_battle(winid)
         else:
             bcomm.player.current_move = None
-            self.app.signals['game_msg'].emit(bcomm.player.status_msg)
+            self.app.gtell(bcomm.player.status_msg)
                 
     def battle_damage(self, player, target, damage, crit=0):
         totaldmg = damage + crit
@@ -446,11 +429,11 @@ class GameEngine(object):
             element = player.current_move.move.element
             if element == target.character.weakness:
                 totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
-                self.app.signals['game_msg'].emit("%s's '%s' is super effective against %s!" %
+                self.app.gtell("%s's '%s' is super effective against %s!" %
                     player, player.current_move.move.fullname, target)
             elif element == target.character.resistance:
                 totaldmg = int(totaldmg * random.randrange(150, 300) / 100.0)
-                self.app.signals['game_msg'].emit("%s's '%s' isn't effective against %s!" %
+                self.app.gtell("%s's '%s' isn't effective against %s!" %
                     player, player.current_move.move.fullname, target)
         # Attacker Earn Super-Points        
         player.superpoints += int(totaldmg / 20.0)
@@ -464,19 +447,19 @@ class GameEngine(object):
         
         # Emit Hit/Critical Messages        
         if player.current_move.super:
-            hit_msg = self.parse_message(player, player.current_move.move.supr_hit_msg, target)
+            hit_msg = render(player.current_move.move.supr_hit_msg, player, target)
         else:
             if crit:
-                hit_msg = self.parse_message(player, player.current_move.move.crit_hit_msg, target)
+                hit_msg = render(player.current_move.move.crit_hit_msg, player, target)
             else:
-                hit_msg = self.parse_message(player, player.current_move.move.hit_msg, target)
+                hit_msg = render(player.current_move.move.hit_msg, player, target)
         if crit:
             hit_msg = "%s [%d+%d crit]" % (hit_msg, abs(damage), crit)
         elif damage:
             hit_msg = "%s [%d]" % (hit_msg, abs(damage))     
-        self.app.signals['game_msg'].emit(hit_msg)
+        self.app.gtell(hit_msg)
         # Element Specific Descriptions
         if player.current_move.move.element == "demi":
-            self.app.signals['game_msg'].emit("%s just lost half their health!" % target.nickname)   
+            self.app.gtell("%s just lost half their health!" % target.nickname)   
         elif player.current_move.move.element == "hpdrain":
-            self.app.signals['game_msg'].emit("%s grows stronger from %s's stolen lifeforce!" % (player, target))
+            self.app.gtell("%s grows stronger from %s's stolen lifeforce!" % (player, target))

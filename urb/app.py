@@ -29,13 +29,11 @@ class ApplicationClass(object):
         self.signals['quit'           ] = Signal() # reason
         self.signals['outgoing_msg'   ] = Signal() # destination, message
         self.signals['global_msg'     ] = Signal() # message
-        self.signals['game_msg'       ] = Signal() # message
         self.signals['debug_msg'      ] = Signal() # message
         self.signals['login'          ] = Signal() # nickname
         self.signals['logout'         ] = Signal() # nickname
 
         self.signals['global_msg'].register(self.on_global_msg)
-        self.signals['game_msg'].register(self.on_game_msg)
         self.signals['login'].register(self.on_login)
         self.signals['logout'].register(self.on_logout)
         
@@ -44,14 +42,6 @@ class ApplicationClass(object):
         
         imports.load_all('commands')
         imports.load_all('gametypes')
-        
-    def on_game_msg(self, message):
-        config = db.get_config()
-        logchannel = config.irc_log_channel
-        to = self.game.fighters.keys()
-        to.append(logchannel)
-        for recipient in to:
-            self.signals['outgoing_msg'].emit(recipient, message)
             
     def on_global_msg(self, message):
         config = db.get_config()
@@ -128,6 +118,14 @@ class ApplicationClass(object):
             
     def tell(self, player, message):
         return self.signals['outgoing_msg'].emit(player.nickname, message)
+    
+    def gtell(self, message):
+        config = db.get_config()
+        logchannel = config.irc_log_channel
+        to = self.game.fighters.keys()
+        to.append(logchannel)
+        for recipient in to:
+            self.signals['outgoing_msg'].emit(recipient, message)
 
     def do_command(self, nickname, command, args):
         player = self.players[nickname]

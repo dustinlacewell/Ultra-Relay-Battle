@@ -6,10 +6,8 @@ class Survivor(GameEngine):
     def on_battle_finish(self, winid):
         team = self.get_team(winid)
         winner = team[0]
-        self.app.signals['game_msg'].emit(
-        "****  ! BATTLE IS OVER !  ****")
-        self.app.signals['game_msg'].emit(
-        "%s is the sole survivor!" % winner.nickname)
+        self.app.gtell("****  ! BATTLE IS OVER !  ****")
+        self.app.gtell("%s is the sole survivor!" % winner.nickname)
         self.state = "idle"
         self.tick_timer.stop()
         for nick, theplayer in list(self.fighters.iteritems()):

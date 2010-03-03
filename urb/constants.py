@@ -2,20 +2,21 @@ import math, random
 
 MOTD = """
 Welcome to Ultra Relay Battle :
-
+ 
 You have succesfully logged in as %s. 
 There are currently %d other players online.
-If you need help getting started feel free to visit the URB website at
-http://ldlework.com/wiki/urb . The main channel #urb is also good for asking
-questions and getting to know people. You can see what commands are available
-to you at any time by issuing the 'help' command.
+If you need help getting started feel free to visit the URB website at \
+http://ldlework.com/wiki/urb . The main channel #urb is also good for \
+asking questions and getting to know people. 
 
-If you're interested in helping the development of URB please write to:
+You can see what commands are available to you at any time by issuing the 'help' command.
 
-                     dlacewell@gmail.com
-    
+If you're interested in helping the development of URB please write to: 
+
+dlacewell@gmail.com
+
 Have fun!"""
-
+MLW = 78
 #
 # Character Creation
 # 
@@ -36,7 +37,6 @@ BFACTOR = 1.09
 LOW_END_FRACTION = 1/32.0
 HIGH_END_FRACTION = 1/8.0
 CRITICAL_POWER_FACTOR = 1.5
-
 def f(x):
    return (x-float(MIN_CHAR_STAT - 1.0)) ** BFACTOR + float(MIN_CHAR_STAT - 1.0)
 

@@ -1,7 +1,9 @@
 import sys
+from textwrap import wrap
 
 from urb import imports
 from urb.util import dlog
+from urb.constants import MLW
 
 PLAYER = 0
 BUILDER = 80
@@ -37,21 +39,22 @@ def get( command_name ):
     """Return the command class for the given command-name."""
     return imports.get('commands', command_name)
     
-def get_allowed(player, all=False):
+def get_allowed(player):
     """
     Return a list command classes a player can run in their current context based
     on admin level. all designates non-contextual commands should be included.
     Note: causes all commands to be loaded.
     """
     allowed = []
+    globals = []
     adminlevel = player.user.adminlevel
-    commands = player.session.context.get_commands()
-    if all:
-        commands.update(imports.load_all('commands'))
-    for name, comobj in commands.iteritems():
+    for name, comobj in player.session.context.get_commands().iteritems():
+            if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
+                allowed.append(name)
+    for name, comobj in imports.load_all('commands').iteritems():
         if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
-            allowed.append(name)
-    return allowed
+            globals.append(name)
+    return allowed, globals
     
 def get_name(comobj):
     """Get a command identifier for arbitrary command type."""
@@ -78,8 +81,12 @@ def get_help(comobj):
     helplines = []
     # process the newline split docstring
     if comobj.__doc__:
-        for line in comobj.__doc__.split("\n"):
-            helplines.append(line)
+        for wline in comobj.__doc__.splitlines():
+            if wline.strip():
+                for line in wrap(wline, MLW, initial_indent=''):
+                    helplines.append(line)
+            else:
+                helplines.append(wline)
         
     # if command has a schema
     if hasattr(comobj, 'schema'):
@@ -90,7 +97,9 @@ def get_help(comobj):
             type, name = arg
             if '*' in type: name = "%s*" % name
             schemaline = "%s [%s:%s]" % (schemaline, type[:1], name)
+        helplines.insert(0, "-"*MLW)
         helplines.insert(0, schemaline)
+        helplines.insert(0, "-"*MLW)
     else:
         for idx, line in enumerate(helplines):
             if line.strip(): 

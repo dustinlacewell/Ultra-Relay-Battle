@@ -27,6 +27,11 @@ class Player(object):
         self.superpoints = 0
         self.magicpoints = 0
         
+    def _get_naws_w(self):
+        return self.user.naws_w - 2
+
+    linewidth = property(_get_naws_w)
+        
     def __str__(self):
         return self.nickname
     
@@ -55,8 +60,8 @@ class Player(object):
         return self.current_move == None
     ready = property(_get_ready)
     
-    def tell(self, message):
-        self.app.tell(self, message)
+    def tell(self, message, fmt=" <"):
+        self.app.tell(self, message, fmt)
     
     def halt(self):
         if self.ready:

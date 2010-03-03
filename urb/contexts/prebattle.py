@@ -4,12 +4,12 @@ from urb.util import dlog, metadata
 
 class PreBattleContext(contexts.Context):
     """
-                    You are waiting for battle.
-            'chars'    =    Get a listing of characters.
-            'pick'     =    Pick a character e.g. : pick testman
-            'ready'    =    Toggle your ready status
+              You are waiting for battle.
+       'chars'    =    Get a listing of characters.
+       'pick'     =    Pick a character e.g. : pick testman
+       'ready'    =    Toggle your ready status
                  
-                 Use help for additional support.   
+           Use help for additional support.   
 """
     
     def enter(_self, self):
@@ -59,7 +59,7 @@ class PreBattleContext(contexts.Context):
         """Show a list of moves for your character."""
         thechar = self.player.character
         if thechar:
-            themoves = char.moves
+            themoves = thechar.moves
             self.player.tell("%s's moves are :" % thechar.fullname)
             for move in themoves:
                 self.player.tell(move.info)

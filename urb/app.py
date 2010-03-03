@@ -1,8 +1,10 @@
+from textwrap import wrap
+
 from twisted.application.service import IService, IServiceCollection
 from twisted.python.log import err
 from twisted.python.log import msg as log
 
-from urb.constants import MOTD
+from urb.constants import MOTD, MLW
 from urb import db, imports, commands, validation
 from urb.event import Signal
 from urb.player import Player, Session
@@ -116,16 +118,24 @@ class ApplicationClass(object):
         if svc:
             return IService(svc.running)
             
-    def tell(self, player, message):
-        return self.signals['outgoing_msg'].emit(player.nickname, message)
+    def tell(self, player, message, fmt=" <"):
+        return self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
     
-    def gtell(self, message):
+    def gtell(self, message, fmt=" <"):
         config = db.get_config()
         logchannel = config.irc_log_channel
         to = self.game.fighters.keys()
         to.append(logchannel)
         for recipient in to:
-            self.signals['outgoing_msg'].emit(recipient, message)
+            self.signals['outgoing_msg'].emit(recipient, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
+            
+    def gshout(self, message, fmt=" <"):
+        config = db.get_config()
+        logchannel = config.irc_log_channel
+        to = self.game.players.keys()
+        to.append(logchannel)
+        for recipient in to:
+            self.signals['outgoing_msg'].emit(recipient, "+ {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
 
     def do_command(self, nickname, command, args):
         player = self.players[nickname]
@@ -134,8 +144,8 @@ class ApplicationClass(object):
             db.commit()
             return
         # determine the usable commands for this player
-        allowed = commands.get_allowed(player, all=True)
-        if command in allowed: # only respond to allowed commands
+        locals, globals = commands.get_allowed(player)
+        if command in locals+globals: # only respond to allowed commands
             # format for context based commands
             contextual = "com_%s" % command
             # session contextual command
@@ -193,8 +203,12 @@ class ApplicationClass(object):
             self.players[nickname] = newplayer
         player_count = len(self.players) - 1
         motd = MOTD % (nickname, player_count)
-        for line in motd.split("\n"):
-            self.tell(newplayer, line)
+        for wline in motd.splitlines():
+            if wline.strip():
+                for line in wrap(wline, newplayer.linewidth, drop_whitespace=False):
+                    self.tell(newplayer, line, fmt=" ^")
+            else:
+                self.tell(newplayer, wline)
         session.switch('mainmenu') 
         
     def on_logout(self, nickname):

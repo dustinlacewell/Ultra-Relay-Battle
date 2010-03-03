@@ -30,6 +30,12 @@ def deploy_schema():
                         if not hasattr(object, attr):
                             val = getattr(gs, attr)
                             setattr(object, attr, val)
+                elif key == 'User':
+                    cp = User(object.nickname, object.email, object.dob, object.adminlevel)
+                    for attr in dir(cp):
+                        if not hasattr(object, attr):
+                            val = getattr(cp, attr)
+                            setattr(object, attr, val)
                 elif key == 'Character':
                     cp = Character(object.selector)
                     for attr in Character.vorder:
@@ -136,6 +142,9 @@ class User( DBObject ):
         self.dmgdone   = 0
         self.dmgtaken  = 0
         self.dmghealed = 0
+        
+        # Telnet
+        self.naws_w = 80
         
     @classmethod
     def create(cls, nickname, email, adminlevel=0):

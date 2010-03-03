@@ -1,7 +1,7 @@
-import chardet                  # detect
+import chardet, struct                  # detect
 
 from twisted.application import internet
-from twisted.conch.telnet import TelnetTransport, TelnetProtocol
+from twisted.conch.telnet import TelnetTransport, TelnetProtocol, TelnetBootstrapProtocol
 from twisted.internet import protocol
 from twisted.protocols import basic
 
@@ -9,14 +9,15 @@ from urb.db import *
 from urb import app
 from urb.util import dlog
 
-class TelnetSession(basic.LineReceiver, TelnetProtocol):
+class TelnetSession(basic.LineReceiver, TelnetBootstrapProtocol):
 
-    delimiter = '\n'
+    delimiter = '\n'        
 
     def __init__(self, app):
         self.app = app
         self.handler = self.on_lobby_command
-        self.nickname = None
+        self.nickname = None   
+        print dir(self) 
 
     def on_lobby_command(self, command, args):
         # XXX HACK -- hardwiring builtin commands when we should have
@@ -55,17 +56,33 @@ class TelnetSession(basic.LineReceiver, TelnetProtocol):
             return
         User.create(nickname, email)
         self.sendLine("New user '%s' created successfully" % nickname)
+        
+    #===========================================================================
+    # def telnet_NAWS(self, bytes):
+    #    # NAWS is client -> server *only*.  self.protocol will
+    #    # therefore be an ITerminalTransport, the `.protocol'
+    #    # attribute of which will be an ITerminalProtocol.  Maybe.
+    #    # You know what, XXX TODO clean this up.
+    #    print "*"*1000
+    #    if len(bytes) == 4:
+    #        width, height = struct.unpack('!HH', ''.join(bytes))
+    #        User.get(nickname=nickname).naws_w = width
+    #    else:
+    #        log.msg("Wrong number of NAWS bytes")
+    #===========================================================================
 
 
     def on_command(self, command, args):
         self.app.do_command(self.nickname, command, args)
+        self.transport.write(">")
+        print "***********", dir(self)
 
     def on_outgoing_msg(self, nickname, message):
         if nickname == self.nickname:
             self.sendLine(message)
 
     def sendLine(self, data):
-        basic.LineReceiver.sendLine(self, "# %s" % data.encode('utf8'))
+        basic.LineReceiver.sendLine(self, data.encode('utf8'))
 
     def dataReceived(self, data):
         encoding = chardet.detect(data)['encoding']

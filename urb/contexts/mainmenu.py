@@ -7,6 +7,6 @@ class MainMenuContext(contexts.Context):
     allowed = ['minigames']
     
     def enter(_self, self):
-        self.app.do_command(self.player, 'all', [])   
+        self.app.do_command(self.player, 'help', [])   
 
 exported_class = MainMenuContext

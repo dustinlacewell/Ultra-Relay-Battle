@@ -19,7 +19,7 @@ irc_channel_pass = "mdcclxxvi"
 #
 
 # Connection
-dcc_listen_ip = '98.228.177.82'
+dcc_listen_ip = '131.156.7.120'
 dcc_listen_port = 8004
 
 #

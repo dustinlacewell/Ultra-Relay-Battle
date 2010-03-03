@@ -7,18 +7,16 @@ from urb.constants import *
 
 class BuilderContext(contexts.Context):
     """
-Ultra Relay Battle - BUILDER MODE
-
-The BUILDER MODE is available for the creation of URB data assets such as
-characters, moves, items, levels and others. For help on general building
-concepts please refer to:
-
-           http://ldlework.com/wiki/urb/building
-
+BUILDER MODE    
+ 
+The BUILDER MODE is available for the creation of URB data assets such as characters, moves, items, levels and others. For help on general building concepts please refer to:
+ 
+http://ldlework.com/wiki/urb/building
+ 
 """
+
     def enter(_self, self):
-        for line in _self.__doc__.split('\n'):
-            self.player.tell(line)
+        self.app.do_command(self.player, 'help', [])  
             
         _self.working = None
             

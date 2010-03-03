@@ -131,14 +131,11 @@ class GameEngine(object):
         if self.state == "idle":
             self.fighters = {}
             self.state = "selection"
-            self.app.signals['global_msg'].emit(
-            "# Character Selection is now open for: %s." % self.name.capitalize())
+            self.app.gshout("Character Selection is now open for: %s." % self.name.capitalize(), fmt=" ^")
         elif self.state == "prebattle":
             self.state = "selection"
-            self.app.signals['global_msg'].emit(
-            "# ! Battle delayed ---------------")
-            self.app.signals['global_msg'].emit(
-            "# Character Selection is now open for: %s." % self.name.capitalize())
+            self.app.gshout("Battle delayed", fmt="-<")
+            self.app.gshout("Character Selection is now open for: %s." % self.name.capitalize(), fmt=" ^")
 
     def close_selection(self):
         if self.state == "selection":
@@ -149,11 +146,10 @@ class GameEngine(object):
                     player.magicpoints, player.superpoints, 
                     ": READY" if player.ready else ""))
             if len(self.get_ready()) == len(self.fighters):
-                self.app.signals['global_msg'].emit(
-                "# Character Selection is now closed.")
+                self.app.gshout("# Character Selection is now closed.")
                 self.state = "prebattle"
             else:
-                self.app.gtell("##    Waiting for all players to READY.   ##")
+                self.app.gtell("Waiting for all players to READY.", fmt=" ^")
                 unready = self.get_unready()
                 for theplayer in unready:
                     player.tell("!! Battle is waiting on you to, 'ready' !!")

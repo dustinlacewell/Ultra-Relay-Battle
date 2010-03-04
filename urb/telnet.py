@@ -1,24 +1,45 @@
-import chardet, struct                  # detect
+import chardet, struct, collections                  # detect
+from collections import deque
 
 from twisted.application import internet
 from twisted.conch.telnet import TelnetTransport, TelnetProtocol, TelnetBootstrapProtocol
+from twisted.conch.insults.helper import TerminalBuffer
+from twisted.conch.insults.insults import ServerProtocol
+from twisted.conch.recvline import HistoricRecvLine
 from twisted.internet import protocol
 from twisted.protocols import basic
+from twisted.internet.protocol import ServerFactory
 
 from urb.db import *
 from urb import app
 from urb.util import dlog
 
-class TelnetSession(basic.LineReceiver, TelnetBootstrapProtocol):
+class TelnetProtocol(HistoricRecvLine):
 
-    delimiter = '\n'        
+    delimiter = '\n'
+    ps = ['> ']        
 
     def __init__(self, app):
         self.app = app
         self.handler = self.on_lobby_command
-        self.nickname = None   
-        print dir(self) 
-
+        self.nickname = None
+        self.display_history = deque()
+          
+        HistoricRecvLine.__init__(self)
+        
+    def _get_prompt(self):
+        return self.ps[self.pn]
+    prompt = property(_get_prompt)
+    
+    def initializeScreen(self):
+        self.terminal.reset()
+        self.terminal.write(self.prompt)
+        self.sendLine("Ultra Relay Battle - conch interface :")
+        self.sendLine("   create <username> <email>")
+        self.sendLine("   connect <username>")
+        self.drawInputLine()
+        self.setInsertMode()
+        
     def on_lobby_command(self, command, args):
         # XXX HACK -- hardwiring builtin commands when we should have
         # a lobby context associated with temporary users instead
@@ -30,23 +51,28 @@ class TelnetSession(basic.LineReceiver, TelnetBootstrapProtocol):
             self.sendLine("Unknown command.  Commands at this time are:")
             self.sendLine("   create <username> <email>")
             self.sendLine("   connect <username>")
+            self.drawInputLine()
 
     def do_connect(self, args):
         try:
             (nickname,) = args
         except ValueError:
             self.sendLine("Usage: connect <username>")
+            self.drawInputLine()
             return
         user = User.get(nickname=nickname)
         if not user:
             self.sendLine("No such user '%s'." % nickname)
+            self.drawInputLine()
             return
 
         self.nickname = user.nickname
+        user.naws_w = self.width
         self.app.signals['outgoing_msg'].register(self.on_outgoing_msg)
         self.app.signals['login'].emit(self.nickname)
         self.sendLine("You are now bound to '%s'." % user.nickname)
         self.handler = self.on_command
+        self.drawInputLine()
 
     def do_create(self, args):
         try:
@@ -57,41 +83,38 @@ class TelnetSession(basic.LineReceiver, TelnetBootstrapProtocol):
         User.create(nickname, email)
         self.sendLine("New user '%s' created successfully" % nickname)
         
-    #===========================================================================
-    # def telnet_NAWS(self, bytes):
-    #    # NAWS is client -> server *only*.  self.protocol will
-    #    # therefore be an ITerminalTransport, the `.protocol'
-    #    # attribute of which will be an ITerminalProtocol.  Maybe.
-    #    # You know what, XXX TODO clean this up.
-    #    print "*"*1000
-    #    if len(bytes) == 4:
-    #        width, height = struct.unpack('!HH', ''.join(bytes))
-    #        User.get(nickname=nickname).naws_w = width
-    #    else:
-    #        log.msg("Wrong number of NAWS bytes")
-    #===========================================================================
-
+    def terminalSize(self, width, height):
+        if self.nickname:
+            User.get(nickname=self.nickname).naws_w = width
+        self.terminal.eraseDisplay()
+        self.terminal.cursorHome()
+        self.width = width
+        self.height = height
+        self.display_history = deque(self.display_history, maxlen=height)
+        for line in self.display_history:
+            if line:
+                self.terminal.write((line+"\n").encode('utf8')[:width])
+        
 
     def on_command(self, command, args):
         self.app.do_command(self.nickname, command, args)
-        self.transport.write(">")
-        print "***********", dir(self)
+        self.drawInputLine()
 
     def on_outgoing_msg(self, nickname, message):
         if nickname == self.nickname:
             self.sendLine(message)
 
     def sendLine(self, data):
-        basic.LineReceiver.sendLine(self, data.encode('utf8'))
-
-    def dataReceived(self, data):
-        encoding = chardet.detect(data)['encoding']
-        if encoding:
-            basic.LineReceiver.dataReceived(self, data.decode(encoding))
-        else: 
-            basic.LineReceiver.dataReceived(self, data)
+        if data:
+            line = (data+"\n").encode('utf8')[:self.width]
+            self.display_history.append(line)
+            self.terminal.write((line+"\n").encode('utf8'))
 
     def lineReceived(self, line):
+        encoding = chardet.detect(line)['encoding']
+        if encoding:
+            line = line.decode(encoding)
+        self.display_history.append(self.prompt + line)
         parts = line.split()
         if len(parts):
             command, args = parts[0], parts[1:]
@@ -102,7 +125,7 @@ class TelnetService(internet.TCPServer):
     service_name = 'telnet'
     
     def wtf(self):
-        return TelnetTransport(TelnetSession, self.app)
+        return TelnetTransport(TelnetBootstrapProtocol, ServerProtocol, TelnetProtocol, self.app)
     
     def __init__(self, app):
         self.app = app

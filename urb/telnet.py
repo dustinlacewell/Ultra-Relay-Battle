@@ -14,6 +14,7 @@ from urb.db import *
 from urb import app
 from urb.util import dlog
 from urb.commands import get_allowed, get
+from urb import validation as v
 
 class TelnetProtocol(HistoricRecvLine):
 
@@ -54,16 +55,40 @@ class TelnetProtocol(HistoricRecvLine):
         print self.tabchoices
         parts = ''.join(self.lineBuffer).split(' ')
         player = self.app.players[self.nickname]
-        if not self.tabchoices:
-            callowed, cglobals = get_allowed(player)
-            self.tabchoices = [cname for cname in callowed+cglobals if cname.startswith(parts[0])]
-        if len(parts) == 1:
+        if self.tabchoices:
             self.tabchoices.append( self.tabchoices.pop(0) )
             choice = self.tabchoices[0]
-            for x in range(len(parts[0])):
+            for x in range(len(parts[-1])):
                 HistoricRecvLine.handle_BACKSPACE(self)
             for c in choice:
                 HistoricRecvLine.characterReceived(self, c, None)
+        else:
+            if len(parts) == 1:
+                if not self.tabchoices:
+                    callowed, cglobals = get_allowed(player)
+                    self.tabchoices = [cname for cname in callowed+cglobals if cname.startswith(parts[0])]
+                    self.handle_TAB()
+            schema = None
+            if len(parts) > 1:
+                callowed, cglobals = get_allowed(player)
+                comname = parts[0]
+                comobj = None
+                if comname in callowed:
+                    contextual = "com_%s" % comname
+                    if hasattr(player.session.context, contextual):
+                        # get the command
+                        comobj = getattr(player.session.context, contextual)
+                elif comname in cglobals:
+                    comobj = get(comname)
+                if comobj:
+                    try:
+                        data = v.command(self, comobj, parts[1:])
+                    except v.ValidationError, e:
+                        if e.choices:
+                            self.tabchoices = [e.encode('utf8') for e in e.choices]
+                            self.handle_TAB()
+                
+                        
         
         #=======================================================================
         # n = self.TABSTOP - (len(self.lineBuffer) % self.TABSTOP)

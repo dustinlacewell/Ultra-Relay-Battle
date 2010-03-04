@@ -148,7 +148,7 @@ pass in can be partial and will print any settings that they match. Passing
             self.player.tell("%s%s: %s" % (
                 field, (20 - len(field)) * " ", getattr(gtype, field)))    
             
-    @metadata(schema=(('gtype', 'gametype'), ('str', 'attribute'), ('msg', 'value')))
+    @metadata(schema=(('gtype', 'gametype'), ('gattr', 'attribute'), ('msg', 'value')))
     def com_setg(_self, self, args):
         """
 Set a setting on the gametype to value. Some settings require a 
@@ -187,7 +187,7 @@ certain type of value, like an number or a single word.
         else:
             self.player.tell("Sorry, there is no gametype setting '%s'." % attr)
     
-    @metadata(schema=(('char','selector'), ('str','attribute'), ('msg','value')))
+    @metadata(schema=(('char','selector'), ('cattr','attribute'), ('msg','value')))
     def com_setc(_self, self, args):
         """
 Set an attribute on the character to value. Some attributes requires a certain
@@ -255,7 +255,7 @@ type of input, like an number or a single word. The attribute may be partial.
             self.player.tell("Sorry, there is no character attribute '%s'." % attr)
        
         
-    @metadata(schema=(('char', 'pselector'), ('str','mselector'), ('str', 'attribute'), ('msg', 'value')))
+    @metadata(schema=(('char', 'pselector'), ('mattr','mselector'), ('str', 'attribute'), ('msg', 'value')))
     def com_setm(_self, self, args):
         """
 Set an attribute on the character move to value. Some attributes require a 

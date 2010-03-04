@@ -106,7 +106,7 @@ class TelnetProtocol(HistoricRecvLine):
 
     def sendLine(self, data):
         if data:
-            line = (data+"\n").encode('utf8')[:self.width]
+            line = (data).encode('utf8')[:self.width]
             self.display_history.append(line)
             self.terminal.write((line+"\n").encode('utf8'))
 

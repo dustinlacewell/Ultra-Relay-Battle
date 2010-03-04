@@ -1,6 +1,7 @@
 from urb.db import User
 from urb import contexts
 from urb.util import dlog
+from urb.constants import MLW
           
 
 class Player(object):
@@ -28,7 +29,7 @@ class Player(object):
         self.magicpoints = 0
         
     def _get_naws_w(self):
-        return self.user.naws_w - 2
+        return min(MLW, self.user.naws_w - 2)
 
     linewidth = property(_get_naws_w)
         

@@ -119,24 +119,30 @@ class ApplicationClass(object):
             return IService(svc.running)
             
     def tell(self, player, message, fmt=" <"):
-        return self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
+        if message.strip():
+             for line in wrap(message, player.linewidth):
+                self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=player.linewidth))
+        else:
+            self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
     
     def gtell(self, message, fmt=" <"):
         config = db.get_config()
         logchannel = config.irc_log_channel
-        to = self.game.fighters.keys()
-        to.append(logchannel)
-        for recipient in to:
-            self.signals['outgoing_msg'].emit(recipient, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
+        for nick, player in self.game.fighters.iteritems():
+            player.tell(message, fmt)
+        for line in wrap(message, MLW):
+            self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
             
     def gshout(self, message, fmt=" <"):
         config = db.get_config()
         logchannel = config.irc_log_channel
-        to = self.game.players.keys()
-        to.append(logchannel)
-        for recipient in to:
-            self.signals['outgoing_msg'].emit(recipient, "+ {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
-
+        mainchannel = config.irc_main_channel
+        for nick, player in self.players.iteritems():
+            player.tell(message, fmt)
+        for line in wrap(message, MLW):
+            self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+            self.signals['outgoing_msg'].emit(mainchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+        
     def do_command(self, nickname, command, args):
         player = self.players[nickname]
         # Let context handle input if it wants

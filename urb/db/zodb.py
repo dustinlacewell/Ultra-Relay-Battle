@@ -79,7 +79,7 @@ class DBGetException(DatabaseBaseException):
 class DBObject(Persistent):
     @classmethod
     def all(cls):
-        return root[cls.__name__].values()
+        return list(root[cls.__name__].values())
     
     @classmethod
     def get(cls, **kwargs):

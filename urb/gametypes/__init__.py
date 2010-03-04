@@ -323,18 +323,18 @@ class GameEngine(object):
                     # Validate magic usage
                     mpcost = 0
                     if themove.element != 'physical':
-                        mpcost = math.ldexp(move.power, 1) / math.log(6000) * 10
+                        mpcost = math.ldexp(themove.power, 1) / math.log(6000) * 10
                         if player.magicpoints < mpcost:
                             player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
                             return True
                     # Calculate Delay
-                    delay = int(self.move.power / 10)
+                    delay = int(themove.power / 10)
                     # Output action strings
                     if super:
-                        prepare_msg = render(self.move.supr_prepare_msg, self.player, target)
+                        prepare_msg = render(themove.supr_prepare_msg, player, target)
                         prepare_msg = ("L%d SUPER ~ " % super) + prepare_msg
                     else:
-                        prepare_msg = render(self.move.prepare_msg, self.player, target)
+                        prepare_msg = render(themove.prepare_msg, player, target)
                     self.app.gtell(prepare_msg)
                     # Queue the battle command
                     bcommand = contexts.battle.BattleCommand(self.app, player, themove, target, delay, mpcost, super)
@@ -432,13 +432,13 @@ class GameEngine(object):
                 self.app.gtell("%s's '%s' isn't effective against %s!" %
                     player, player.current_move.move.fullname, target)
         # Attacker Earn Super-Points        
-        player.superpoints += int(totaldmg / 20.0)
+        player.superpoints += int(abs(totaldmg) / 20.0)
         player.superpoints = min(self.settings.maxsuper, player.superpoints)
         # Apply Damage
         target.health -= totaldmg
         target.health = min(self.settings.maxhealth, target.health)
         # Target Earn Super-Points
-        target.superpoints += int(totaldmg / 10.0)
+        target.superpoints += int(abs(totaldmg) / 10.0)
         target.superpoints = min(self.settings.maxsuper, target.superpoints)
         
         # Emit Hit/Critical Messages        

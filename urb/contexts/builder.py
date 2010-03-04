@@ -36,7 +36,7 @@ http://ldlework.com/wiki/urb/building
 Create a new character.
 """
         selector = unicode(args['selector'])
-        char = self.app.database.Character.create(selector)
+        char = db.Character.create(selector)
         if char:
             self.player.tell("'%s' character succesfully created." % args['selector'])
             _self.working = char
@@ -48,7 +48,7 @@ Create a new character move.
 """
         char = args['character']
         selector = unicode(args['selector'])
-        move = self.app.database.Move.create(selector, char.selector)
+        move = db.Move.create(selector, char.selector)
         if move:
             self.player.tell("'%s' move successfully created for '%s'." % (selector, char.selector))
             _self.working = char
@@ -58,7 +58,7 @@ Create a new character move.
         """
 Permanently delete character.
 """
-        self.app.database.Character.get(selector=args['selector'].selector).delete()
+        db.Character.get(selector=args['selector'].selector).delete()
             
     @metadata(schema=(('char','selector'), ('msg*','filters')))
     def com_lsc(_self, self, args):
@@ -91,7 +91,7 @@ pass in can be partial and will print any attributes that they match. Passing
             self.player.tell("-" * 80)
             self.player.tell("Moves: %s" % movelist)
             
-    @metadata(schema=(('char','pselector'), ('str', 'mselector'), ('msg*', 'filters')))
+    @metadata(schema=(('char','pselector'), ('move', 'mselector'), ('msg*', 'filters')))
     def com_lsm(_self, self, args):
         """
 Print move attributes. Passing no filters prints all attributes or the filters 
@@ -102,12 +102,13 @@ the can* booleans, for example. In this command mselector can also be partial.
         char = args['pselector']
         attrs = db.Move.vorder
         fields = attrs
-        mselector = args['mselector']
+        vmovelist = args['mselector']
         movelist = char.moves
         themove = None
         for move in movelist:
-            if move.selector.startswith(mselector):
-                themove = move
+            for vmove in vmovelist:
+                if move.selector.startswith(vmove.selector):
+                    themove = move
         if themove:
             if 'filters' in args:
                 newfields = []
@@ -255,7 +256,7 @@ type of input, like an number or a single word. The attribute may be partial.
             self.player.tell("Sorry, there is no character attribute '%s'." % attr)
        
         
-    @metadata(schema=(('char', 'pselector'), ('mattr','mselector'), ('str', 'attribute'), ('msg', 'value')))
+    @metadata(schema=(('char', 'pselector'), ('move','mselector'), ('mattr', 'attribute'), ('msg', 'value')))
     def com_setm(_self, self, args):
         """
 Set an attribute on the character move to value. Some attributes require a 
@@ -269,12 +270,13 @@ attribute may be partial.
             'element': validation.element,
         }
         char = args['pselector']
-        mselector = args['mselector']
+        vmovelist = args['mselector']
         movelist = char.moves
         themove = None
         for move in movelist:
-            if move.selector.startswith(mselector):
-                themove = move
+            for vmove in vmovelist:
+                if move.selector.startswith(vmove.selector):
+                    themove = move
         if themove:
             attr = args['attribute']
             value = [args['value']]

@@ -13,6 +13,7 @@ from twisted.internet.protocol import ServerFactory
 from urb.db import *
 from urb import app
 from urb.util import dlog
+from urb.commands import get_allowed, get
 
 class TelnetProtocol(HistoricRecvLine):
 
@@ -24,6 +25,7 @@ class TelnetProtocol(HistoricRecvLine):
         self.handler = self.on_lobby_command
         self.nickname = None
         self.display_history = deque()
+        self.tabchoices = []
           
         HistoricRecvLine.__init__(self)
         
@@ -39,6 +41,36 @@ class TelnetProtocol(HistoricRecvLine):
         self.sendLine("   connect <username>")
         self.drawInputLine()
         self.setInsertMode()
+        
+    def characterReceived(self, ch, moreCharactersComing):
+        self.tabchoices = []
+        HistoricRecvLine.characterReceived(self, ch, moreCharactersComing)
+        
+    def handle_BACKSPACE(self):
+        self.tabchoices = []
+        HistoricRecvLine.handle_BACKSPACE(self)
+        
+    def handle_TAB(self):
+        print self.tabchoices
+        parts = ''.join(self.lineBuffer).split(' ')
+        player = self.app.players[self.nickname]
+        if not self.tabchoices:
+            callowed, cglobals = get_allowed(player)
+            self.tabchoices = [cname for cname in callowed+cglobals if cname.startswith(parts[0])]
+        if len(parts) == 1:
+            self.tabchoices.append( self.tabchoices.pop(0) )
+            choice = self.tabchoices[0]
+            for x in range(len(parts[0])):
+                HistoricRecvLine.handle_BACKSPACE(self)
+            for c in choice:
+                HistoricRecvLine.characterReceived(self, c, None)
+        
+        #=======================================================================
+        # n = self.TABSTOP - (len(self.lineBuffer) % self.TABSTOP)
+        # self.terminal.cursorForward(n)
+        # self.lineBufferIndex += n
+        # self.lineBuffer.extend(' ' * n)
+        #=======================================================================
         
     def on_lobby_command(self, command, args):
         # XXX HACK -- hardwiring builtin commands when we should have

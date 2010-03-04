@@ -150,8 +150,8 @@ class ApplicationClass(object):
             db.commit()
             return
         # determine the usable commands for this player
-        locals, globals = commands.get_allowed(player)
-        if command in locals+globals: # only respond to allowed commands
+        clocals, cglobals = commands.get_allowed(player)
+        if command in clocals+cglobals: # only respond to allowed commands
             # format for context based commands
             contextual = "com_%s" % command
             # session contextual command

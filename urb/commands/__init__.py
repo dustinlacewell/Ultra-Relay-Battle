@@ -45,16 +45,16 @@ def get_allowed(player):
     on admin level. all designates non-contextual commands should be included.
     Note: causes all commands to be loaded.
     """
-    allowed = []
-    globals = []
+    callowed = []
+    cglobals = []
     adminlevel = player.user.adminlevel
     for name, comobj in player.session.context.get_commands().iteritems():
             if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
-                allowed.append(name)
+                callowed.append(name)
     for name, comobj in imports.load_all('commands').iteritems():
         if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
-            globals.append(name)
-    return allowed, globals
+            cglobals.append(name)
+    return callowed, cglobals
     
 def get_name(comobj):
     """Get a command identifier for arbitrary command type."""

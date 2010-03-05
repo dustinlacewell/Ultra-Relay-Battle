@@ -24,8 +24,9 @@ from urb.constants import elements
 from urb.util import dlog, dtrace
 
 class ValidationError(Exception):
-    def __init__(self, message, choices=[]):
+    def __init__(self, message, validator, choices=[]):
         self.message = message
+        self.validator = validator
         self.choices = choices
         
     def __str__(self):
@@ -42,7 +43,7 @@ def integer(app, name, argsleft):
     try:
         val = int(argsleft.pop(0))
     except ValueError:
-        raise ValidationError("'%s' must be an integer." % name)
+        raise ValidationError("'%s' must be an integer." % name, integer)
     else:
         return val, argsleft
         
@@ -51,7 +52,7 @@ def floating(app, name, argsleft):
     try:
         val = float(argsleft.pop(0))
     except ValueError:
-        raise ValidationError("'%s' must be an float." % name)
+        raise ValidationError("'%s' must be an float." % name, floating)
     else:
         return val, argsleft
         
@@ -65,7 +66,7 @@ def element(app, name, argsleft):
     etype = argsleft.pop(0)
     if etype not in elements:    
         choices = [e for e in elements if e.startswith(etype)]
-        raise ValidationError("'%s' is not a valid element." % etype, choices)
+        raise ValidationError("'%s' is not a valid element." % etype, element, choices)
     else:
         return etype, argsleft
     
@@ -75,7 +76,7 @@ def user(app, name, argsleft):
     user = User.get(nickname=nick)
     if not user:
         choices = [n.nickname for n in User.all() if n.nickname.startswith(nick)]
-        raise ValidationError("'%s' is not a valid user." % nick, choices)
+        raise ValidationError("'%s' is not a valid user." % nick, user, choices)
     else:
         return user, argsleft
         
@@ -86,7 +87,7 @@ def player(app, name, argsleft):
         plrobj = app.game.players[nick]
     except KeyError:
         choices = [p.nickname for p in app.game.players.iterkeys() if p.nickname.startswith(nick)]
-        raise ValidationError("'%s' is not currently signed on." % nick, choices)
+        raise ValidationError("'%s' is not currently signed on." % nick, player, choices)
     else:
         return plrobj, argsleft
         
@@ -97,7 +98,7 @@ def fighter(app, name, argsleft):
         plrobj = app.game.fighters[nick]
     except KeyError:
         choices = [f.nickname for f in app.game.fighters.iterkeys() if f.nickname.startswith(nick)]
-        raise ValidationError("'%s' is not an active fighter." % nick, choices)
+        raise ValidationError("'%s' is not an active fighter." % nick, fighter, choices)
     else:
         return plrobj, argsleft
         
@@ -109,7 +110,7 @@ def character(app, name, argsleft):
         return char, argsleft
     else:
         choices = [c.selector for c in Character.all() if c.selector.startswith(selector)]
-        raise ValidationError("'%s' is not a valid character selector." % selector, choices)
+        raise ValidationError("'%s' is not a valid character selector." % selector, character, choices)
     
 def cattr(app, name, argsleft):
     """Validate argument to an attribute on a character."""
@@ -118,17 +119,23 @@ def cattr(app, name, argsleft):
         return attrname, argsleft
     else:
         choices = [a for a in Character.vorder if a.startswith(attrname)]
-        raise ValidationError("'%s' is not a valid character attribute." % attrname, choices)
+        raise ValidationError("'%s' is not a valid character attribute." % attrname, cattr, choices)
         
-def move(app, name, argsleft):
+def move(app, name, argsleft, char=None):
     """Validate argument to a *LIST* of existing moves."""
     selector = argsleft.pop(0)
-    moves = Move.filter(selector=selector)
+    if char:
+        moves = Move.filter(selector=selector, ownerselector=char.selector)
+    else:
+        moves = Move.filter(selector=selector)
     if len(moves):
         return moves, argsleft
     else:
-        choices = [m.selector for m in Move.all() if m.selector.startswith(selector)]
-        raise ValidationError("'%s' is not a valid move selector." % selector, choices)
+        if char:
+            choices = [m.selector for m in Move.filter(ownerselector=char.selector) if m.selector.startswith(selector)]
+        else:
+            choices = [m.selector for m in Move.all() if m.selector.startswith(selector)]
+        raise ValidationError("'%s' is not a valid move selector." % selector, move, choices)
     
 def mattr(app, name, argsleft):
     """Validate argument to an attribute on a move."""
@@ -137,7 +144,7 @@ def mattr(app, name, argsleft):
         return attrname, argsleft
     else:
         choices = [a for a in Move.vorder if a.startswith(attrname)]
-        raise ValidationError("'%s' is not a valid move attribute." % attrname, choices)
+        raise ValidationError("'%s' is not a valid move attribute." % attrname, mattr, choices)
         
 def gametype(app, name, argsleft):
     """Validate argument to an existing gametype."""
@@ -152,7 +159,7 @@ def gametype(app, name, argsleft):
         
     else:
         choices = [g.selector for g in GameSettings.all() if g.selector.startswith(typename)]
-        raise ValidationError("'%s' is not a valid gametype." % typename, choices)
+        raise ValidationError("'%s' is not a valid gametype." % typename, gametype, choices)
     
 def gattr(app, name, argsleft):
     """Validate argument to an attribute on a gametype."""
@@ -161,7 +168,7 @@ def gattr(app, name, argsleft):
         return attrname, argsleft
     else:
         choices = [a for a in GameSettings.vorder if a.startswith(attrname)]
-        raise ValidationError("'%s' is not a valid gametype attribute." % attrname, choices)
+        raise ValidationError("'%s' is not a valid gametype attribute." % attrname, gattr, choices)
         
 ## END VALIDATORS ##
 
@@ -196,6 +203,8 @@ def command(app, comobj, arguments):
     """
     # the validated arugments
     validated = {}
+    # the last character validated
+    last_vchar = None
     # arguments left to process
     argsleft = list(arguments)
     # only validate if need to
@@ -217,7 +226,12 @@ def command(app, comobj, arguments):
                     # grab the right validator
                     vfunc = types[rawtype]
                     # store valid arg and remaining args
-                    validated[name], argsleft = vfunc(app, name, argsleft)
+                    if last_vchar and rawtype == 'move':
+                        validated[name], argsleft = vfunc(app, name, argsleft, char=last_vchar)
+                    else:
+                        validated[name], argsleft = vfunc(app, name, argsleft)
+                    if rawtype == 'char':
+                        last_vchar = validated[name]
             # on validation error, append index:type tag
             except ValidationError, e:
                 tag = " (%d:%s)" % (len(validated) + 1, type)

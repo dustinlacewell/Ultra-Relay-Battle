@@ -20,6 +20,7 @@
 from urb.db import *
 from urb.commands import get_name
 from urb.constants import elements
+from urb import contexts
 
 from urb.util import dlog, dtrace
 
@@ -97,19 +98,23 @@ def fighter(app, name, argsleft):
     try:
         plrobj = app.game.fighters[nick]
     except KeyError:
-        choices = [f.nickname for f in app.game.fighters.iterkeys() if f.nickname.startswith(nick)]
+        choices = [f.nickname for f in app.game.fighters.itervalues() if f.nickname.startswith(nick)]
         raise ValidationError("'%s' is not an active fighter." % nick, fighter, choices)
     else:
         return plrobj, argsleft
         
-def character(app, name, argsleft):
+def character(app, name, argsleft, player=None):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
-    char = Character.get(selector=selector)
+    kwargs = {'selector':selector}
+    if player and not isinstance(player.session.context,  contexts.get('builder')):
+        kwargs['finalized'] = 1
+    char = Character.filter(**kwargs)
     if char:
-        return char, argsleft
+        return char[0], argsleft
     else:
-        choices = [c.selector for c in Character.all() if c.selector.startswith(selector)]
+        del kwargs['selector']
+        choices = [c.selector for c in Character.filter(**kwargs) if c.selector.startswith(selector)]
         raise ValidationError("'%s' is not a valid character selector." % selector, character, choices)
     
 def cattr(app, name, argsleft):
@@ -124,17 +129,15 @@ def cattr(app, name, argsleft):
 def move(app, name, argsleft, char=None):
     """Validate argument to a *LIST* of existing moves."""
     selector = argsleft.pop(0)
+    kwargs = {'selector':selector}
     if char:
-        moves = Move.filter(selector=selector, ownerselector=char.selector)
-    else:
-        moves = Move.filter(selector=selector)
+        kwargs['ownerselector'] = char.selector
+    moves = Move.filter(**kwargs)
     if len(moves):
         return moves, argsleft
     else:
-        if char:
-            choices = [m.selector for m in Move.filter(ownerselector=char.selector) if m.selector.startswith(selector)]
-        else:
-            choices = [m.selector for m in Move.all() if m.selector.startswith(selector)]
+        del kwargs['selector']
+        choices = [m.selector for m in Move.filter(**kwargs) if m.selector.startswith(selector)]
         raise ValidationError("'%s' is not a valid move selector." % selector, move, choices)
     
 def mattr(app, name, argsleft):
@@ -188,7 +191,7 @@ types = {
     }
 
 
-def command(app, comobj, arguments):
+def command(app, comobj, arguments, player=None):
     """
     urb.validation.command
         app        :    Main application reference
@@ -209,8 +212,11 @@ def command(app, comobj, arguments):
     argsleft = list(arguments)
     # only validate if need to
     if hasattr(comobj, 'schema'):
+        # argument count
+        idx = 0
         # process each schema arugment
         for type, name in comobj.schema:
+            idx += 1
             try:
                 # get raw type
                 rawtype = type.strip('*')
@@ -221,21 +227,26 @@ def command(app, comobj, arguments):
                     # if last parameter is optional, we're done anyway
                     if optional: break 
                     else:
-                        raise ValidationError("Missing '%s' parameter." % name)
+                        raise ValidationError("Missing '%s' parameter." % name, None)
                 else:
                     # grab the right validator
                     vfunc = types[rawtype]
                     # store valid arg and remaining args
                     if last_vchar and rawtype == 'move':
                         validated[name], argsleft = vfunc(app, name, argsleft, char=last_vchar)
+                    elif rawtype == 'char':
+                        validated[name], argsleft = vfunc(app, name, argsleft, player=player)
                     else:
                         validated[name], argsleft = vfunc(app, name, argsleft)
                     if rawtype == 'char':
                         last_vchar = validated[name]
             # on validation error, append index:type tag
             except ValidationError, e:
+                if rawtype == 'move' and last_vchar:
+                    e.message = "{0} for {1}.".format(e.message[:-1], last_vchar.selector)
                 tag = " (%d:%s)" % (len(validated) + 1, type)
                 e.message = e.message + tag
+                e.argnum = idx
                 # reraise modified Validation Error
                 raise e
         # return validated arugment dictionary

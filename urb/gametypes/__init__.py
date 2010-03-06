@@ -323,9 +323,9 @@ class GameEngine(object):
                     # Validate magic usage
                     mpcost = 0
                     if themove.element != 'physical':
-                        mpcost = math.ldexp(themove.power, 1) / math.log(6000) * 10
+                        mpcost = int(math.ldexp(themove.power, 1) / math.log(6000) * 10)
                         if player.magicpoints < mpcost:
-                            player.tell("You don't have enough Magic to do '%s'!" % move.fullname)
+                            player.tell("You don't have enough Magic to do '%s'!" % themove.fullname)
                             return True
                     # Calculate Delay
                     delay = int(themove.power / 10)
@@ -365,7 +365,7 @@ class GameEngine(object):
             st = bcomm.player.character.pstrength
             df = targetp.character.pdefense
             maxhp = self.settings.starthealth      
-            damage = calculate_damage(st, df, power, maxhp) + int(random.randrange(-maxhp * 0.05, maxhp * 0.05))
+            damage = int(calculate_damage(st, df, power, maxhp) + int(random.randrange(-maxhp * 0.05, maxhp * 0.05)))
             if is_critical(st, df):
                 critdamage = calculate_damage(st,df,power * CRITICAL_POWER_FACTOR, maxhp) - damage
             else:
@@ -388,7 +388,7 @@ class GameEngine(object):
             strength = bcomm.player.character.mstrength
             defense = bcomm.target.character.mdefense
             if bcomm.move.element == "heal":
-                healing = calculate_damage(strength, 25, power, maxhp) + int(random.randrange(-maxhp * 0.03, maxhp * 0.03))
+                healing = int(calculate_damage(strength, 25, power, maxhp) + int(random.randrange(-maxhp * 0.03, maxhp * 0.03)))
                 self.battle_damage(bcomm.player, bcomm.target, -healing)
             elif bcomm.move.element == "demi":
                 targethp = bcomm.target.health
@@ -435,7 +435,7 @@ class GameEngine(object):
         player.superpoints += int(abs(totaldmg) / 20.0)
         player.superpoints = min(self.settings.maxsuper, player.superpoints)
         # Apply Damage
-        target.health -= totaldmg
+        target.health -= int(totaldmg)
         target.health = min(self.settings.maxhealth, target.health)
         # Target Earn Super-Points
         target.superpoints += int(abs(totaldmg) / 10.0)

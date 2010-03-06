@@ -17,7 +17,6 @@ Get information on a chararcter or character move.
             if 'mselector' in self.args:
                 themove = None
                 mselector = None
-                print [move.info for move in self.args['mselector']]
                 for move in self.args['mselector']:
                     if move.ownerselector == cselector:
                         themove = move

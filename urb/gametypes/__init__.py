@@ -114,7 +114,7 @@ class GameEngine(object):
                     "'%s' can only target allies." % (move.fullname))
                 elif thetarget.health <= 0:
                     raise ValidationError(
-                    "%s is dead man. They're dead." % targetname)
+                    "%s is dead man. They're dead." % target.nickname)
                 else:
                     return True
             elif ttype == "enemy":
@@ -123,7 +123,7 @@ class GameEngine(object):
                     "%s' can only target enemies." % (move.fullname))
                 elif thetarget.health <= 0:
                     raise ValidationError(
-                    "%s is already dead. What good would that do?" % targetname)
+                    "%s is already dead. What good would that do?" % target.nickname)
                 else:
                     return True
         

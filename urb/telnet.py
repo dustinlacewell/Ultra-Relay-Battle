@@ -32,7 +32,7 @@ class TelnetProtocol(HistoricRecvLine):
         self.display_history = deque()
         self.tabchoices = []
         self.tabarg = None
-          
+        self.drawInput = False
         HistoricRecvLine.__init__(self)
         
     def _get_prompt(self):
@@ -43,12 +43,14 @@ class TelnetProtocol(HistoricRecvLine):
         if self.nickname and self.nickname in self.app.players:
             player = self.app.players[self.nickname]
             if isinstance(player.session.context,  contexts.get('battle')):
-                
-                return "# {p.health} HP : {p.magicpoints} MP : {p.superpoints} SP #".format(p=player)
+                ready = player.current_move.name.capitalize() if player.current_move else "READY"
+                status = "# {p.health}HP:{p.magicpoints}MP:{p.superpoints}SP #-{ready}".format(p=player, ready=ready)
+                result = status + "{0:-^{1}}".format('-', MLW - len(status))
+                return result
             else:
-                return "Ultra Relay Battle 0.9"
+                return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW)
         else:
-            return "Ultra Relay Battle 0.9"
+            return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW)
     status = property(_get_status)
     
     def initializeScreen(self):
@@ -166,23 +168,19 @@ class TelnetProtocol(HistoricRecvLine):
             self.sendLine("Unknown command.  Commands at this time are:")
             self.sendLine("   create <username> <email> <password>")
             self.sendLine("   connect <username> <password>")
-            self.drawInputLine()
 
     def do_connect(self, args):
         try:
             (nickname, password) = args
         except ValueError:
             self.sendLine("Usage: connect <username> <passsword>")
-            self.drawInputLine()
             return
         user = User.get(nickname=nickname)
         if not user:
             self.sendLine("No such user '%s'." % nickname)
-            self.drawInputLine()
             return
         elif user.password != password:
             self.sendLine("Incorrect password.")
-            self.drawInputLine()
             return 
         self.nickname = user.nickname
         user.naws_w = self.width
@@ -191,19 +189,18 @@ class TelnetProtocol(HistoricRecvLine):
         self.app.signals['login'].emit(self.nickname)
         self.sendLine("You are now bound to '%s'." % user.nickname)
         self.handler = self.on_command
-        #self.drawInputLine()
+        # self.drawInputLine()
+        self.drawInput = True
 
     def do_create(self, args):
         try:
             (nickname, email, password) = args
         except ValueError:
             self.sendLine("Usage: create <username> <email> <password>")
-            self.drawInputLine()
             return
         u = User.get(nickname=nickname)
         if u:
             self.sendLine("Sorry, '{0}' is already taken.".format(nickname))
-            self.drawInputLine()
             return
         User.create(nickname, email, password)
         self.do_connect((nickname, password))
@@ -223,7 +220,6 @@ class TelnetProtocol(HistoricRecvLine):
 
     def on_command(self, command, args):
         self.app.do_command(self.nickname, command, args)
-        #self.drawInputLine()
 
     def on_outgoing_msg(self, nickname, message):
         if nickname == self.nickname:
@@ -236,23 +232,25 @@ class TelnetProtocol(HistoricRecvLine):
             self.terminal.deleteLine(n=2)
             self.terminal.cursorBackward(n=len(line))
             self.terminal.write((line+"\n").encode('utf8'))
+            if self.drawInput:
+                self.drawInputLine()
             
     def drawInputLine(self):
         print traceback.print_stack()
 
         promptline = self.prompt + ''.join(self.lineBuffer)
         self.terminal.write(promptline + '\n')
-        status = "{0:-^{1}}".format(self.status, min(MLW + 2, self.width))
-        self.terminal.write(status)
+        self.terminal.write(self.status)
         self.terminal.cursorUp()
         pl = len(promptline)
-        sl = len(status)
+        sl = len(self.status)
         if pl < sl:
            self.terminal.cursorBackward(n=(sl - pl))
         elif pl > sl:
            self.terminal.cursorForward(n=(pl-sl))
 
     def lineReceived(self, line):
+        self.drawInput = False
         encoding = chardet.detect(line)['encoding']
         if encoding:
             line = line.decode(encoding)
@@ -261,6 +259,8 @@ class TelnetProtocol(HistoricRecvLine):
         if len(parts):
             command, args = parts[0], parts[1:]
             self.handler(command, args)
+            self.drawInputLine()
+            self.drawInput = True
             
 class TelnetService(internet.TCPServer):
     service_name = 'telnet'

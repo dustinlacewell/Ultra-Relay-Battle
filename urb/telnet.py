@@ -1,5 +1,7 @@
 import chardet, struct, collections                  # detect
 from collections import deque
+import traceback
+
 
 from twisted.application import internet
 from twisted.conch.telnet import TelnetTransport, TelnetProtocol, TelnetBootstrapProtocol
@@ -54,8 +56,8 @@ class TelnetProtocol(HistoricRecvLine):
         self.setInsertMode()
         for x in xrange(256): self.sendLine("\n")
         self.sendLine("Ultra Relay Battle - conch interface :")
-        self.sendLine("   create <username> <email>")
-        self.sendLine("   connect <username>")
+        self.sendLine("   create <username> <email> <password>")
+        self.sendLine("   connect <username> <password>")
         self.drawInputLine()
     
     def reset_tab(self):
@@ -162,15 +164,15 @@ class TelnetProtocol(HistoricRecvLine):
             return self.do_connect(args)
         else:
             self.sendLine("Unknown command.  Commands at this time are:")
-            self.sendLine("   create <username> <email>")
-            self.sendLine("   connect <username>")
+            self.sendLine("   create <username> <email> <password>")
+            self.sendLine("   connect <username> <password>")
             self.drawInputLine()
 
     def do_connect(self, args):
         try:
-            (nickname,) = args
+            (nickname, password) = args
         except ValueError:
-            self.sendLine("Usage: connect <username>")
+            self.sendLine("Usage: connect <username> <passsword>")
             self.drawInputLine()
             return
         user = User.get(nickname=nickname)
@@ -178,7 +180,10 @@ class TelnetProtocol(HistoricRecvLine):
             self.sendLine("No such user '%s'." % nickname)
             self.drawInputLine()
             return
-
+        elif user.password != password:
+            self.sendLine("Incorrect password.")
+            self.drawInputLine()
+            return 
         self.nickname = user.nickname
         user.naws_w = self.width
         for x in xrange(128): self.sendLine("\n")
@@ -190,12 +195,18 @@ class TelnetProtocol(HistoricRecvLine):
 
     def do_create(self, args):
         try:
-            (nickname, email) = args
+            (nickname, email, password) = args
         except ValueError:
-            self.sendLine("Usage: create <username> <email>")
+            self.sendLine("Usage: create <username> <email> <password>")
+            self.drawInputLine()
             return
-        User.create(nickname, email)
-        self.sendLine("New user '%s' created successfully" % nickname)
+        u = User.get(nickname=nickname)
+        if u:
+            self.sendLine("Sorry, '{0}' is already taken.".format(nickname))
+            self.drawInputLine()
+            return
+        User.create(nickname, email, password)
+        self.do_connect((nickname, password))
         
     def terminalSize(self, width, height):
         if self.nickname:
@@ -225,9 +236,10 @@ class TelnetProtocol(HistoricRecvLine):
             self.terminal.deleteLine(n=2)
             self.terminal.cursorBackward(n=len(line))
             self.terminal.write((line+"\n").encode('utf8'))
-            self.drawInputLine()
             
     def drawInputLine(self):
+        print traceback.print_stack()
+
         promptline = self.prompt + ''.join(self.lineBuffer)
         self.terminal.write(promptline + '\n')
         status = "{0:-^{1}}".format(self.status, min(MLW + 2, self.width))

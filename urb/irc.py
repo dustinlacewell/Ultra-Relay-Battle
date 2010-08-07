@@ -29,7 +29,7 @@ class IRCBot(IRCClient):
     # Default nickname for bot
     nickname = 'TheHost' 
     # A set of pending whois binds
-    pending_binds = set()
+    pending_whois = {}
     # A mapping of remote host addresses to nicks
     remote_hosts = {}
     
@@ -70,16 +70,44 @@ class IRCBot(IRCClient):
     # Built in command handling        
     def builtin(self, nickname, command, args):
         if command == 'register': # add new user
+            if len(args) != 2:
+                self.msg(nickname, "The register command requires email and password to be supplied.")
+                self.msg(nickname, "Like this: register your@emailaddress.com yourpassword")
+                return True
             email = args[0]
-            User.create(nickname, email)
-            self.msg(nickname, "New user, %s, created." % nickname)
+            password = args[1]
+            User.create(nickname, email, password)
+            self.msg(nickname, "Great, your account is set up!")
             self.msg(nickname, "Please initiate a DCC Chat to login.")
             return True  
-        
+
+    def do_privmsg(self, nickname, authed, channel, command, args):
+        if authed:        
+            # If command was admin built in return
+            if self.builtin(nickname, command, args): return
+            
+            # If registered, direct to DCC Chat
+            if User.get(nickname=nickname):
+                self.msg(nickname, 'Please initiate DCC Chat to begin.')
+            # Otherwise direct to registration
+            else:
+                self.msg(nickname, 'Welcome %s to Ultra Relay Battle!' % nickname)
+                self.msg(nickname, 'To register type the following:')
+                self.msg(nickname, '       /msg %s register [email] [password]' % self.nickname)
+                self.msg(nickname, "")
+                self.msg(nickname, "  email: if you want to be able to recover your password")
+                self.msg(nickname, "         make sure this is valid.")
+                self.msg(nickname, "")
+                self.msg(nickname, "  password: required, but only used for logging in over")
+                self.msg(nickname, "            telnet. On IRC, being identified to nickserv")
+                self.msg(nickname, "            is good enough.")
+        else:
+            self.msg(nickname, "To play Ultra Relay Battle you need to identified")
+            self.msg(nickname, "NickServ. See /msg NickServ help")
+    
     
     # Incomming message handling    
     def privmsg(self, user, channel, message):
-        dlog('[%s]%s said, "%s"' % (channel, user, message))
         nickname = user.split('!', 1)[0]
         # Filter messages
         if channel != self.nickname: return # only true private messages
@@ -89,56 +117,73 @@ class IRCBot(IRCClient):
         # Parse message into command and args
         parts = message.split()
         command, args = parts[0], parts[1:]
+
+        self.whois(nickname, self.do_privmsg, channel, command, args)
         
-        # If command was admin built in return
-        if self.builtin(nickname, command, args): return
-        
-        # If registered, direct to DCC Chat
-        if User.get(nickname=nickname):
-            self.msg(nickname, 'Please initiate DCC Chat to begin.')
-        # Otherwise direct to registration
-        else:
-            self.msg(nickname, 'Welcome %s to Ultra Relay Battle!' % nickname)
-            self.msg(nickname, 'To register type the following:')
-            self.msg(nickname, '       /msg %s register [email]' % self.nickname)
-    
     # Respond to DCC invites           
     def dccDoChat(self, user, channel, address, port, data):
         user = user.split('!', 1)[0]
-        dlog('DCC Chat request from %s on %s:%s' % (user, str(address), str(port)))
+        dlog(address)
         u = User.get(nickname=user)
         if u:
-            self.remote_hosts[str(address)] = unicode(user)
-            self.bind(user)
+            self.bind(user, address)
         else:
             self.msg(user, "You must be registered to login.")
             self.msg(user, "To register type the following:")
-            self.msg(user, "/msg %s register [email]" % self.nickname)
-            
-    # Initiate binding process via WHOIS lookup        
-    def bind(self, nickname):
-        dlog('Requesting whois information on %s for bind' % nickname)
-        self.pending_binds.add(nickname) # Add nickname to people waiting for DCC
+            self.msg(user, "/msg %s register [email] [password]" % self.nickname)
+            self.msg(user, "")
+            self.msg(user, "  email: if you want to be able to recover your password")
+            self.msg(user, "         make sure this is valid.")
+            self.msg(user, "")
+            self.msg(user, "  password: required, but only used for logging in over")
+            self.msg(user, "            telnet. On IRC, being identified to nickserv")
+            self.msg(user, "            is good enough.")
+
+    def whois(self, nickname, callback, *args, **kwargs):
         self.sendLine('WHOIS %s' % nickname) # Request WHOIS info for nickname
-        
+        timeout = reactor.callLater(1, self.whois_timeout, nickname)
+        self.pending_whois[nickname] = (callback, args, kwargs, timeout)
+
+
+    def whois_timeout(self, nickname):
+        if nickname in self.pending_whois:
+            callback = self.pending_whois[nickname]
+            callback[0](nickname, False, *callback[1], **callback[2])
+            
     # Continue bind process in response to WHOIS results    
     def irc_330(self, prefix, params):
         nickname = params[1]
         message = params[2]
-        dlog('Whois information received for %s' % nickname)
         # If pending and identified then bind
-        if 'is logged in as' in params and nickname in self.pending_binds:
-            dlog('Whois confired %s is identified to services' % nickname)
-            self.dccChat(nickname) # initiate DCC Chat
-            self.pending_binds.remove(params[1]) # nickname is no longer pending
-        # Inform user NickServ identification is required    
-        elif nickname in self.pending_binds:
-            self.msg(nickname, "To establish DCC login, you *must* be identified to NickServ.")
-            self.msg(nickname, "See '/msg nickserv help'")  
+        if nickname in self.pending_whois:
+            authed = True
+            if 'is logged in as' in params:
+                pass
+            elif 'account  :' in params:
+                pass
+            else:
+                authed = False
+            callback = self.pending_whois[nickname]
+            callback[-1].cancel()
+            callback[0](nickname, authed, *callback[1], **callback[2])
+            del self.pending_whois[nickname]
     
+    # Initiate binding process via WHOIS lookup        
+    def bind(self, nickname, address):
+        self.whois(nickname, self.do_bind, address)
+
+    def do_bind(self, nickname, authed, address):
+        if authed:
+            self.remote_hosts[address] = nickname
+            self.dccChat(nickname) # initiate DCC Chat
+        # Inform user NickServ identification is required    
+        else:
+            self.msg(nickname, "To login, you *must* be identified to NickServ.")
+            self.msg(nickname, "See '/msg nickserv help'")  
+
+        
     # Initiate a DCC Chat session        
     def dccChat(self, nickname):
-        dlog("Sending DCC invite with %s" % self.dccargs)
         self.ctcpMakeQuery(nickname.encode('utf8'), [('DCC', self.dccargs)])
 
 
@@ -148,11 +193,14 @@ class DccChat(basic.LineReceiver, styles.Ephemeral):
     bot = None
     buffer = ""
     globalcoms = ['notice']
- 
+
     # DCC Chat is succesfully connected
     def connectionMade(self):
-        dlog("Established DCC Chat with %s" % self.remote_nick)
-        self.factory.bind(self.remote_nick, self)
+        dlog("Established DCC Chat with %s" % self.remote_addr)
+        if self.remote_nick == None:
+            self.sendExternalIPError()
+        else:
+            self.factory.bind(self.remote_nick, self)
         
     # DCC Chat ended 
     def connectionLost(self, reason=None):
@@ -164,7 +212,28 @@ class DccChat(basic.LineReceiver, styles.Ephemeral):
         line = line.encode('utf8')
         basic.LineReceiver.sendLine(self, line)
 
+    def sendExternalIPError(self):
+        msg = """****
+    Sorry, your DCC request could not be completed for technical reasons.
+    Luckily, this is easy to fix!
+    
+    The IP your computer is sending out for DCC is: {0}
+    This is not your actual public address.
+    
+    Please refer to http://ldlework.com/wiki/urb/design#TheDCCIPProblem to
+    learn how to configure your IRC client's external IP address.
+
+    Seek further assistance in #urb if needed!
+    Thanks.
+    """.format(self.remote_addr)
+        for line in msg.split('\n'):
+            self.sendLine(line)
+        
+
     def dataReceived(self, data):
+        if self.remote_nick == None:
+            self.sendExternalIPError()
+            return
         encoding = chardet.detect(data)['encoding']
         udata = data.decode(encoding)
         self.buffer = self.buffer + udata
@@ -209,20 +278,11 @@ class DccChatFactory(protocol.ClientFactory):
         client.bot = self.ircfactory.client # Give access to IRC bot
         self.client = client
         try:
+            client.remote_addr = addr.host
             client.remote_nick = client.bot.remote_hosts.pop(addr.host)
         except KeyError:
-            self.msg("""****
-    Sorry, your DCC request could not be completed for technical reasons.
-    Luckily, this is easy to fix!
-    
-    Please refer to http://ldlework.com/wiki/urb/design#TheDCCIPProblem to
-    learn how to configure your IRC client's external IP address.
-    
-    Seek further assistance in #urb if needed!
-    Thanks.
-    """)
-            return None
-        else:
+            client.remote_nick = None
+        finally:
             return self.client
         
     def clientConnectionFailed(self, unused_connector, unused_reason):
@@ -236,6 +296,7 @@ class DccChatFactory(protocol.ClientFactory):
         
     def msg(self, message):
         if self.client:
+            print self.client, message 
             self.client.sendLine(message)
            
     def bind(self, nickname, session):

@@ -19,6 +19,7 @@ from urb.commands import get_allowed, get
 from urb import validation as v
 from urb.constants import MLW
 from urb import contexts
+from urb.validation import ValidationError
 
 class TelnetProtocol(HistoricRecvLine):
 
@@ -48,9 +49,9 @@ class TelnetProtocol(HistoricRecvLine):
                 result = status + "{0:-^{1}}".format('-', MLW - len(status))
                 return result
             else:
-                return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW)
+                return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW + 2) # +2 for no prompt
         else:
-            return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW)
+            return "{0:-^{1}}".format("Ultra Relay Battle 0.9", MLW + 2)
     status = property(_get_status)
     
     def initializeScreen(self):
@@ -77,13 +78,12 @@ class TelnetProtocol(HistoricRecvLine):
     def handle_RETURN(self):
         self.reset_tab()
         if self.lineBuffer: # prevent empty submission
+            self.sendLine(" ")
             return HistoricRecvLine.handle_RETURN(self)
         
     def handle_TAB(self):
         if self.nickname: # only tab once logged in
             parts = ''.join(self.lineBuffer).split(' ')
-            print 'parts are ', repr(parts)
-            print 'tabchoices are ', repr(self.tabchoices)
             player = self.app.players[self.nickname]
             comname = parts[0]
             
@@ -100,16 +100,13 @@ class TelnetProtocol(HistoricRecvLine):
                     HistoricRecvLine.handle_BACKSPACE(self)
                     
                 parts[self.tabarg] = choice
-                print 'parts are now ', parts
                 newline = ' '.join(parts)
-                print 'newline is ', repr(newline)
                 end = len(' '.join(parts[:self.tabarg + 1]))
                  
                 for c in newline:
                     HistoricRecvLine.characterReceived(self, c, None)
                 
                 diff = abs(end - self.lineBufferIndex)
-                print 'arg, index, end, diff:  ', self.tabarg, self.lineBufferIndex, end, diff
                 
                 for x in xrange(diff):
                     self.handle_LEFT()
@@ -117,8 +114,31 @@ class TelnetProtocol(HistoricRecvLine):
             else: # determine tabchoices
                 # complete commands
                 if len(parts) == 1:
-                    if isinstance(player.session.context,  contexts.get('battle')):
+                    if '.' in parts[0]:
+                        _parts = parts[0].split('.')
+                        if len(_parts) != 2:
+                            player.tell("Inter-context commands take the form: context.command arg1 ... argN")
+                            return
+                        context_name, command = _parts
+                        if context_name not in ['build', 'admin'] and command != 'exit':
+                            player.tell("Context must be one of: build, admin")
+                            return
+                        _context_name = {'build':'builder', 'admin':'administration'}[context_name] # convert to true name
+                        ctxcls = contexts.get(_context_name)
+                        if not ctxcls:
+                            player.tell("The %s context could not be loaded remotely." % _context_name)
+                            return
+                        contextual = "com_%s" % command
+                        context = ctxcls(self)
+                        self.tabchoices = ["%s.%s" % (context_name, attribute[4:]) for attribute in dir(context) if attribute.startswith(contextual) and attribute != 'com_exit']
+                        if self.tabchoices:
+                            self.tabarg = 0
+                            return self.handle_TAB()
+
+                    elif isinstance(player.session.context,  contexts.get('battle')):
                         self.tabchoices = [move.selector.encode('utf8') for move in player.character.moves if move.selector.startswith(parts[0])]
+                        callowed, cglobals = get_allowed(player)
+                        self.tabchoices += [cname for cname in callowed if cname.startswith(parts[0])]
                         if self.tabchoices:
                             self.tabarg = 0
                             return self.handle_TAB()
@@ -126,17 +146,43 @@ class TelnetProtocol(HistoricRecvLine):
                         callowed, cglobals = get_allowed(player)
                         self.tabchoices = [cname for cname in callowed+cglobals if cname.startswith(parts[0])]
                         if self.tabchoices:
-                            print 0, self.tabchoices
                             self.tabarg = 0
                             return self.handle_TAB()
                 # complete arguments
                 schema = None
                 comobj = None
+                callowed, cglobals = get_allowed(player)
                 if len(parts) > 1:
-                    print 'determining argument tab'
-                    callowed, cglobals = get_allowed(player)
+
+                    if '.' in comname:
+                        _parts = comname.split('.')
+                        if len(_parts) == 2:
+                            context_name, command = _parts
+                            if context_name in ['build', 'admin'] and command != exit:
+                                _context_name = {'build':'builder', 'admin':'administration'}[context_name] # convert to true name
+                                ctxcls = contexts.get(_context_name)
+                                if ctxcls:
+                                    contextual = "com_%s" % command
+                                    context = ctxcls(self)
+                                    if hasattr(context, contextual):
+                                        comobj = getattr(context, contextual)
+                    # battle move arg
+                    elif isinstance(player.session.context,  contexts.get('battle')) and len(parts) == 2:
+                        moves = [move for move in player.character.moves if move.selector == comname]
+                        if moves:
+                            move = moves[0]
+                            self.tabchoices = []
+                            for fighter in self.app.game.fighters.itervalues():
+                                try:
+                                    self.app.game.validate_target(player, fighter, move)
+                                except ValidationError: pass
+                                else:
+                                    self.tabchoices.append(fighter.nickname.encode('utf8'))
+                            if self.tabchoices:
+                                self.tabarg = 1
+                                self.handle_TAB()
                     # contextual
-                    if comname in callowed:
+                    elif comname in callowed:
                         contextual = "com_%s" % comname
                         if hasattr(player.session.context, contextual):
                             # get the command
@@ -150,10 +196,8 @@ class TelnetProtocol(HistoricRecvLine):
                             data = v.command(self.app, comobj, parts[1:], player=player)
                         except v.ValidationError, e:
                             if e.choices:
-                                print e, dir(e)
                                 self.tabchoices = [c.encode('utf8') for c in e.choices]
                                 if self.tabchoices:
-                                    print e.argnum, self.tabchoices
                                     self.tabarg = e.argnum
                                     self.handle_TAB()
         
@@ -182,6 +226,9 @@ class TelnetProtocol(HistoricRecvLine):
         elif user.password != password:
             self.sendLine("Incorrect password.")
             return 
+        elif nickname in self.app.players:
+            self.sendLine("That user is currently signed on.")
+            return
         self.nickname = user.nickname
         user.naws_w = self.width
         for x in xrange(128): self.sendLine("\n")
@@ -236,7 +283,6 @@ class TelnetProtocol(HistoricRecvLine):
                 self.drawInputLine()
             
     def drawInputLine(self):
-        print traceback.print_stack()
 
         promptline = self.prompt + ''.join(self.lineBuffer)
         self.terminal.write(promptline + '\n')

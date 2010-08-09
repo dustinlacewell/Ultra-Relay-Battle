@@ -25,7 +25,6 @@ Sign up for battle and choose a character!
                 else:
                     self.player.tell("No such gametype exists.")
             else:
-                print dir(gametypes)
                 gtype = gametypes.get('survivor')
                 if gtype:
                     self.app.set_game(gtype)

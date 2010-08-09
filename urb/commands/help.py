@@ -75,7 +75,7 @@ See INFO for: commands, contexts
                 for wline in context.__doc__.splitlines():
                     for line in wrap(wline, self.player.linewidth):
                         self.player.tell(line)
-                self.player.tell("", fmt="-<")
+#                self.player.tell("", fmt="-<")
                 self.player.tell("AVAILABLE COMMANDS ('all' for more)", fmt="-<")
                 available = ['help', 'all'] + clocals
                 available = ", ".join(available)

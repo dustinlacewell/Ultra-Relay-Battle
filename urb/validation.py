@@ -85,9 +85,9 @@ def player(app, name, argsleft):
     """Validate argument to a logged on player."""
     nick = argsleft.pop(0)
     try:
-        plrobj = app.game.players[nick]
+        plrobj = app.players[nick]
     except KeyError:
-        choices = [p.nickname for p in app.game.players.iterkeys() if p.nickname.startswith(nick)]
+        choices = [p.nickname for p in app.players.itervalues() if p.nickname.startswith(nick)]
         raise ValidationError("'%s' is not currently signed on." % nick, player, choices)
     else:
         return plrobj, argsleft

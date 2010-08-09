@@ -27,9 +27,11 @@ class Player(object):
         self.health = 0
         self.superpoints = 0
         self.magicpoints = 0
+
+        self.effects = {}
         
     def _get_naws_w(self):
-        return min(MLW, self.user.naws_w - 2)
+        return min(MLW, self.user.naws_w-2)
 
     linewidth = property(_get_naws_w)
         
@@ -68,10 +70,10 @@ class Player(object):
         if self.ready:
             self.tell("You're not doing anything yet!")
         else:
-            self.app.gtell("%s stops doing '%s'." % (self.nickname, self.current_move.name))
+            self.app.fsay("%s stops doing '%s'." % (self.nickname, self.current_move.name))
             self.current_move.alive = False
             self.current_move = None
-            self.app.gtell(self.status_msg) 
+            self.app.fsay(self.status_msg) 
             
     def is_enemy(self, player):
         return player.team != self.team

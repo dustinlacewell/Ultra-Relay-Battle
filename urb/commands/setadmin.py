@@ -13,6 +13,5 @@ Set the administration level for a particular user.
         user = self.args['nickname']
         user.adminlevel = self.args['adminlevel']
         self.player.tell("%s's adminlevel now set to %d" % (user.nickname, self.args['adminlevel']))
-        self.alive = False
 
 exported_class = SetAdminCommand

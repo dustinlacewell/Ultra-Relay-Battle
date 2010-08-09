@@ -33,7 +33,7 @@ class PreBattleContext(contexts.Context):
     def com_oops(_self, self, args):
         """Forget your current character selection."""
         if self.player.character and not self.player.ready:
-            self.app.gtell("%s decides not to play as %s" % (self.player, self.player.character.fullname))
+            self.app.fsay("%s decides not to play as %s" % (self.player, self.player.character.fullname))
             self.player.character = None
             self.player.current_move = None
         elif self.app.game.state in ['prebattle']:

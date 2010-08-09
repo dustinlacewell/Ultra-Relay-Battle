@@ -60,6 +60,13 @@ Permanently delete character.
 """
         db.Character.get(selector=args['selector'].selector).delete()
             
+    @metadata(adminlevel=100, schema=(('char', 'cselector'), ('move', 'mselector'),))
+    def com_rmmove(_self, self, args):
+        """
+Permanently delete a character move.
+"""
+        db.Move.get(ownerselector=args['cselector'].selector, selector=args['mselector'].selector).delete()
+            
     @metadata(schema=(('char','selector'), ('msg*','filters')))
     def com_lsc(_self, self, args):
         """

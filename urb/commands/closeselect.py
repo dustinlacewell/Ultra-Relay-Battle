@@ -20,7 +20,7 @@ Close character selection so battle may begin.
             else:
                 self.app.game.close_selection()
         else:
-            self.player.tell("Character selection isn't open.")
+            self.player.tell(" * Character selection isn't open.")
                         
         
             

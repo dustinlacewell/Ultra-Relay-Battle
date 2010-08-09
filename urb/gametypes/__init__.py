@@ -442,8 +442,7 @@ class GameEngine(object):
                     self.app.fsay(render(bcomm.player.character.block_fail_msg, bcomm.target, bcomm.player))
 
             self.battle_damage(bcomm.player, bcomm.target, damage, critdamage) # int(self.move.power / 10))
-            print "POISON CREATED"
-            effects.get('poison')(self.app, bcomm.player, bcomm.move, targetp)
+            effects.get('regen')(self.app, bcomm.player, bcomm.move, targetp)
             print "EFFECTS ON TARGET", targetp.effects
         else:
             bcomm.player.magicpoints -= bcomm.mpcost

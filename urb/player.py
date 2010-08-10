@@ -78,7 +78,8 @@ class Player(object):
     def is_enemy(self, player):
         return player.team != self.team
     
-    
+    def has(self, effectname):
+        return effectname in self.effects
             
 
 class Session(object):

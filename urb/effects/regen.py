@@ -8,17 +8,21 @@ class RegenEffect(StatusEffect):
     hitslimit = 10
     regenamt = 10
 
+    apply_msgs = [
+        "{t} starts to regenerate!",
+    ]
+
+    remove_msgs = [
+	"{t} stops regenerating.",
+	"{t}'s body is no longer regenerating.",
+	"{t}'s regen wears off",
+    ]
+
     hit_msgs = [
 	"Wounds on {t}'s body heal.",
 	"{t} is feeling better and better.",
 	"A healing wave washes over {t}'s body.",
 	"{t} is slightly regenerated.",
-    ]
-
-    wearoff_msgs = [
-	"{t} stops regenerating.",
-	"{t}'s body is no longer regenerating.",
-	"{t}'s regen wears off",
     ]
 
     def __init__(self, app, source, move, target):
@@ -36,27 +40,18 @@ class RegenEffect(StatusEffect):
     def random_hit_msg(self, hp):
 	return choice(self.hit_msgs).format(p=self.source, t=self.target)+ " [{0}]".format(hp)
 
-    def apply(self):
-	super(RegenEffect, self).apply()
-	self.app.fsay("{t} starts to regenerate!".format(t=self.target))
-
-    def _get_wearoff_msg(self):
-	return choice(self.wearoff_msgs).format(p=self.source, t=self.target)+ " [{0} tot]".format(self.total_health)
-    wearoff = property(_get_wearoff_msg)
-    
     def tick(self):
 	self._ticks += 1
 	if self._ticks == self.ticks:
 	    self._ticks = 0
 	    if self._hits == self.hits:
-		self.app.fsay(self.wearoff)
 		self.remove()
 		return
 	    else:
 		self._hits += 1
-		if self.target.health >= self.app.game.settings.maxhealth:
-		    self.app.fsay(self.random_hit_msg(health))
 		health = self.regenamt
+		if self.target.health <= self.app.game.settings.maxhealth:
+		    self.app.fsay(self.random_hit_msg(health))
 		self.total_health += health
 		self.target.health = min(self.target.health + health, self.app.game.settings.maxhealth)
 

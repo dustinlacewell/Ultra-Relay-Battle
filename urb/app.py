@@ -9,6 +9,7 @@ from urb import db, imports, commands, validation
 from urb.event import Signal
 from urb.player import Player, Session
 from urb.util import dlog, dtrace
+from urb import contexts
 
 class ApplicationClass(object):
     '''The root namespace object for URB, holding references to
@@ -44,6 +45,17 @@ class ApplicationClass(object):
         
         imports.load_all('commands')
         imports.load_all('gametypes')
+
+    def _get_lobbyists(self):
+        if self.game == None:
+            return self.players
+        else:
+            lobbyists = {}
+            for nickname, player in self.players.iteritems():
+                if nickname not in self.game.fighters:
+                    lobbyists[nickname] = player
+            return lobbyists
+    lobbyists = property(_get_lobbyists)
             
     def on_global_msg(self, message):
         config = db.get_config()
@@ -120,31 +132,79 @@ class ApplicationClass(object):
             
     def tell(self, player, message, fmt=" <"):
         if message.strip():
-             for line in wrap(message, player.linewidth):
+             for line in wrap(message, player.linewidth, drop_whitespace=False, replace_whitespace=False):
                 self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=player.linewidth))
         else:
             self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
     
-    def gtell(self, message, fmt=" <"):
+    def lsay(self, message, fmt=" <", channel=True):
+        config = db.get_config()
+        mainchannel = config.irc_main_channel
+        for nick, player in self.lobbyists.iteritems():
+            player.tell(message, fmt)
+        if channel:
+            for line in wrap(message, MLW, drop_whitespace=False, replace_whitespace=False):
+                self.signals['outgoing_msg'].emit(mainchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+    
+
+    def fsay(self, message, fmt=" <", channel=True):
         config = db.get_config()
         logchannel = config.irc_log_channel
-        for nick, player in self.game.fighters.iteritems():
-            player.tell(message, fmt)
-        for line in wrap(message, MLW):
-            self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+        if self.game:
+            for nick, player in self.game.fighters.iteritems():
+                player.tell(message, fmt)
+            if channel:
+                for line in wrap(message, MLW, drop_whitespace=False, replace_whitespace=False):
+                    self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
             
-    def gshout(self, message, fmt=" <"):
+    def gsay(self, message, fmt=" <", channel=True):
         config = db.get_config()
         logchannel = config.irc_log_channel
         mainchannel = config.irc_main_channel
         for nick, player in self.players.iteritems():
             player.tell(message, fmt)
-        for line in wrap(message, MLW):
-            self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
-            self.signals['outgoing_msg'].emit(mainchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+        if channel:
+            for line in wrap(message, MLW, drop_whitespace=False, replace_whitespace=False):
+                self.signals['outgoing_msg'].emit(logchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
+                self.signals['outgoing_msg'].emit(mainchannel, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=MLW))
         
     def do_command(self, nickname, command, args):
         player = self.players[nickname]
+        # inter-context commands
+        if '.' in command:
+            parts = command.split('.')
+            if len(parts) != 2:
+                player.tell("Inter-context commands take the form: context.command arg1 ... argN")
+                return
+            context_name, command = parts
+            if context_name not in ['build', 'admin']:
+                player.tell("Context must be one of: build, admin")
+                return
+            context_name = {'build':'builder', 'admin':'administration'}[context_name] # convert to true name
+            ctxcls = contexts.get(context_name)
+            if not ctxcls:
+                player.tell("The %s context could not be loaded remotely." % context_name)
+                return
+            contextual = "com_%s" % command
+            if not hasattr(ctxcls, contextual) or contextual == "com_exit":
+                player.tell("The %s context has no %s command." % (context_name, command))
+                return
+            context = ctxcls(self)
+            contextual = getattr(context, contextual)
+            # run validation
+            try:
+                data = validation.command(self, contextual, args)
+                # run if valid
+                contextual(player.session, data)
+                db.commit()
+                return
+            except validation.ValidationError, e:
+                self.tell(player, e.message)
+                return
+            except Exception, e:
+                self.tell(player, "Sorry, that command resulted in an error on the server.")
+                return    
+
         # Let context handle input if it wants
         if player.session.context.on_input(player.session, command, args):
             db.commit()

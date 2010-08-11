@@ -29,10 +29,11 @@ class StatusEffect(object):
 	self.target.effects[self.name] = self
 	self.app.fsay(choice(self.apply_msgs).format(p=self.source, m=self.move, t=self.target))
 
-    def remove(self):
+    def remove(self, silent=False):
 	if self.name in self.target.effects:
 	    del self.target.effects[self.name]
-	    self.app.fsay(choice(self.remove_msgs).format(p=self.source, m=self.move, t=self.target))
+            if not silent:
+                self.app.fsay(choice(self.remove_msgs).format(p=self.source, m=self.move, t=self.target))
 
     def tick(self):
         self.ticks += 1
@@ -50,6 +51,28 @@ class ActiveEffect(StatusEffect):
         
         self.hits = 0
 
+    def on_hit(self):
+        pass
+
+    def on_death(self):
+        pass
+
+    def _on_death(self):
+        self.on_death()
+        death_msg = render(self.target.character.death_msg, self.target, self.source)
+        self.app.fsay(death_msg)
+        self.app.fsay("Death slaps a sticker on %s, \"Kaput!\" You're dead! [%d]" % (self.target, self.target.health))
+        winid = self.app.game.check_win_condition()
+        if winid != None:
+            self.app.game.finish_battle(winid)            
+        self.remove(silent=True)        
+
+    def random_hit_msg(self, *args, **kwargs):
+        default = {'t'=self.target, 'p'=self.source, 'm'=self.move}
+        default.update(kwargs)
+        msg = choice(self.hit_msgs).format(*args, **default)
+	self.app.fsay(msg)
+
     def tick(self):
         self.ticks += 1
         if self.ticks % self.ticklimit == 0:
@@ -57,5 +80,8 @@ class ActiveEffect(StatusEffect):
                 self.remove()
             else:
                 self.hits += 1
-                self.on_hit()
-            
+                result = self.on_hit()
+                if self.target.health <= 0:
+                    self._on_death()
+                elif result:    
+                    self.random_hit_msg(**result)

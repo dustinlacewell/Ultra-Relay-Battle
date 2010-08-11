@@ -221,15 +221,12 @@ class GameEngine(object):
             self.app.game.finish_battle(winid)
         self.gametime += 1
         if self.actions:
-            print "ACTIONS", self.actions
             for action in list(self.actions):
-                print "ACTION", action
                 if action[0] <= self.gametime:
                     if action[1].alive:
                         action[1].alive = False
                         action[1].perform()
                 if not action[1].alive and action in self.actions:
-                    print "ACTIONS, ACTION", self.actions, action
                     self.actions.remove(action)
                         
     def start_battle_timers(self):
@@ -361,7 +358,12 @@ class GameEngine(object):
                 player.tell("* Your command couldn't be parsed. If supering, your move should look like 'fireball*3'.")
                 return True
         themove = Move.get(selector=command)
+        
+        # check for move-prevention : stun
         if themove in thechar.moves:
+            if 'stun' in player.effects:
+                player.tell(player.effects['stun'].get_denial(themove))
+                return True
             # Check if battle is paused               
             if self.check_paused(player, themove):
                 return True
@@ -397,6 +399,7 @@ class GameEngine(object):
                 # Output action strings
                 self.output_preperation(player, themove, super, target)
                 # Queue the battle command
+                print "TARGET", target
                 bcommand = self.get_battle_command(player, themove, super, delay, target)
                 if bcommand:
                     player.current_move = bcommand
@@ -405,80 +408,72 @@ class GameEngine(object):
                 return True
         
     def battle_do(self, bcomm):
-        #======================================================================
-         # delegate_dict = {
-         #                'physical':    self.on_battle_physical,
-         #                #'heal':        self.on_battle_heal,
-         # }
-         # if bcomm.move.element in delegate_dict:
-         #   handler = delegate_dict[bcomm.move.element]
-         #   args = (
-         #           bcomm.player,
-         #           bcomm.target,
-         #           bcomm.move,
-         #           )
-         #   handler()
-         #======================================================================
-        targetp = self.fighters[bcomm.target]
-        bcomm.player.superpoints -= bcomm.super * 100
-        if bcomm.move.element == "physical":
-            power = bcomm.move.power + bcomm.super * 50
-            st = bcomm.player.character.pstrength
-            df = targetp.character.pdefense
-            maxhp = self.settings.starthealth      
+        player = bcomm.player
+        target = bcomm.target
+        move = bcomm.move
+
+        player.superpoints -= bcomm.super * 100
+        # Physical Moves
+        if move.element == "physical":
+            # increase move power based on super
+            power = 0 if 'blind' in player.effects else move.power + bcomm.super * 50
+            st = player.character.pstrength
+            df = target.character.pdefense
+            maxhp = self.settings.maxhealth      
             damage = int(calculate_damage(st, df, power, maxhp) + int(random.randrange(-maxhp * 0.05, maxhp * 0.05)))
             if is_critical(st, df):
                 critdamage = calculate_damage(st,df,power * CRITICAL_POWER_FACTOR, maxhp) - damage
             else:
                 critdamage = 0
-            if targetp.current_move and targetp.current_move.name == 'Block':
+            if target.current_move and target.current_move.name == 'Block':
                 if random.randint(0, 2) == 0:
                     damage = 0
-                    self.app.fsay(render(bcomm.player.character.block_success_msg, bcomm.target, bcomm.player))
-                    bcomm.player.current_move = None
+                    self.app.fsay(render(player.character.block_success_msg, target, player))
+                    player.current_move = None
                     return
                 else:
                     damage = int(damage * (2 / 3.0))
-                    self.app.fsay(render(bcomm.player.character.block_fail_msg, bcomm.target, bcomm.player))
+                    self.app.fsay(render(player.character.block_fail_msg, target, player))
 
-            self.battle_damage(bcomm.player, bcomm.target, damage, critdamage) # int(self.move.power / 10))
-            effects.get('regen')(self.app, bcomm.player, bcomm.move, targetp)
-            print "EFFECTS ON TARGET", targetp.effects
+            self.battle_damage(player, target, damage, critdamage) # int(self.move.power / 10))
+            effects.get('stun')(self.app, player, move, target)
+            print "EFFECTS ON TARGET", target.effects
+        # Magical Moves
         else:
-            bcomm.player.magicpoints -= bcomm.mpcost
-            power = bcomm.move.power
+            player.magicpoints -= bcomm.mpcost
+            power = move.power
             maxhp = self.settings.maxhealth
-            strength = bcomm.player.character.mstrength
-            defense = bcomm.target.character.mdefense
-            if bcomm.move.element == "heal":
+            strength = player.character.mstrength
+            defense = target.character.mdefense
+            if move.element == "heal":
                 healing = int(calculate_damage(strength, 25, power, maxhp) + int(random.randrange(-maxhp * 0.03, maxhp * 0.03)))
-                self.battle_damage(bcomm.player, bcomm.target, -healing)
-            elif bcomm.move.element == "demi":
-                targethp = bcomm.target.health
+                self.battle_damage(player, target, -healing)
+            elif move.element == "demi":
+                targethp = target.health
                 ratio = targethp / float(maxhp)
                 ratio = min(MAX_DEMI_RATIO, ratio)
                 if random.random() > ratio:
                     damage = int(targethp / 2.0)
-                    self.battle_damage(bcomm.player, bcomm.target, damage)
+                    self.battle_damage(player, target, damage)
                 else:
-                    self.app.fsay(render(bcomm.move.miss_msg, bcomm.player, bcomm.target))
-            elif bcomm.move.element == "hpdrain":
+                    self.app.fsay(render(move.miss_msg, player, target))
+            elif move.element == "hpdrain":
                 damage = calculate_damage(strength, defense, power, maxhp)+ int(random.randrange(-maxhp * 0.01, maxhp * 0.01))
                 stolen = damage * (challenge_factor(strength, defense) - 1)
-                bcomm.player.health += stolen
-                bcomm.player.health = min(self.settings.maxhealth, bcomm.player.health)
-                self.battle_damage(bcomm.player, bcomm.target, damage)
+                player.health += stolen
+                player.health = min(self.settings.maxhealth, player.health)
+                self.battle_damage(player, target, damage)
             
-        if bcomm.target.health <= 0:
-            death_msg = render(bcomm.target.character.death_msg, bcomm.target, bcomm.player)
+        if target.health <= 0:
+            death_msg = render(target.character.death_msg, target, player)
             self.app.fsay(death_msg)
-            self.app.fsay("Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (bcomm.target, bcomm.target.health))
+            self.app.fsay("Death slaps a sticker on %s, \"Kaput!\", you're dead. [%d]" % (target, target.health))
         winid = self.app.game.check_win_condition()
         if winid != None:
             self.finish_battle(winid)            
         else:
-            bcomm.player.current_move = None
-            self.app.fsay(bcomm.player.status_msg)
+            player.current_move = None
+            self.app.fsay(player.status_msg)
                 
     def battle_damage(self, player, target, damage, crit=0):
         totaldmg = damage + crit

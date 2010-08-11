@@ -70,7 +70,10 @@ class BattleContext(contexts.Context):
             
     def com_block(_self, self, args):
         """Block any incomming attacks."""
-        if self.player.ready:
+        # check for move prevention: stun
+        if 'stun' in self.player.effects:
+            self.player.tell(self.player.effects['stun'].get_denial('block'))
+        elif self.player.ready:
             bcommand = BlockCommand(self.app, self.player)
             self.player.current_move = bcommand
         else:

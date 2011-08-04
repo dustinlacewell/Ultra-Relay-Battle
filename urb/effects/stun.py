@@ -18,7 +18,7 @@ class StunEffect(StatusEffect):
         "{t} wakes up.",
         "{t} suddenly shakes awake.",
         "{t} returns to consciousness.",
-        "{t}.is no longer asleep",
+        "{t} is no longer asleep",
     ]
 
     def __init__(self, app, source, move, target):
@@ -32,7 +32,6 @@ class StunEffect(StatusEffect):
         super(StunEffect, self).apply()
 
     def get_denial(self, move):
-        print "DENIAL", move
-        return "You can't do '{m}' while you are {v}!".format(m=move, v=self.verb)
+        return "You can't do '{m.fullname}' while you are {v}!".format(m=move, v=self.verb)
 
 exported_class = StunEffect

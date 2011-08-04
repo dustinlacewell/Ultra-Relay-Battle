@@ -107,6 +107,7 @@ def character(app, name, argsleft, player=None):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
     kwargs = {'selector':selector}
+    print "CONTEXT BUILDER:", contexts.get('builder')
     if player and not isinstance(player.session.context,  contexts.get('builder')):
         kwargs['finalized'] = 1
     char = Character.filter(**kwargs)

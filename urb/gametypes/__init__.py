@@ -320,7 +320,7 @@ class GameEngine(object):
     def check_magic_usage(self, player, move, target):
         mpcost = move.mpcost
         if move.element != 'physical' and player.magicpoints < mpcost:
-           player.tell("* You don't have enough Magic to do '%s'!" % themove.fullname)
+           player.tell("* You don't have enough Magic to do '%s'!" % move.fullname)
            return True
 
     def calculate_delay(self, player, move, target):

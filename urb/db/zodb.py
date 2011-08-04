@@ -36,6 +36,7 @@ def deploy_schema():
                         if not hasattr(object, attr):
                             val = getattr(cp, attr)
                             setattr(object, attr, val)
+                    object.password = 'default'
                 elif key == 'Character':
                     cp = Character(object.selector)
                     for attr in Character.vorder:
@@ -127,8 +128,9 @@ class DBObject(Persistent):
     
 
 class User( DBObject ):
-    def __init__(self, nickname, email, dob, adminlevel):
+    def __init__(self, nickname, email, dob, adminlevel, password=''):
         self.nickname = nickname
+        self.password = password
         self.email = email
         self.dob = dob
         self.adminlevel = adminlevel
@@ -147,11 +149,11 @@ class User( DBObject ):
         self.naws_w = 80
         
     @classmethod
-    def create(cls, nickname, email, adminlevel=0):
+    def create(cls, nickname, email, adminlevel=0, password=''):
         if len(cls.all()) == 0:
             adminlevel = 100
         dob = datetime.datetime.now()
-        newuser = cls(nickname, email, dob, adminlevel)
+        newuser = cls(nickname, email, dob, adminlevel, password)
         root['User'][nickname] = newuser
         commit()
         return newuser
@@ -263,7 +265,7 @@ class Move( DBObject ):
     def delete(self):
         del root['Move'][(self.selector, ownerselector)]
         commit()
-        
+
     def change_selector(self, newkey):
         tree = root['Move']
         oldkey = (self.selector, self.ownerselector)
@@ -272,6 +274,10 @@ class Move( DBObject ):
             if oldkey in tree:
                 del tree[oldkey]
                 tree[newkey] = self
+
+    def _get_mpcost(self):
+        return 300
+    mpcost = property(_get_mpcost)
         
     def _info_str(self):
         return "(%s) %s : %d : %s : %s : %s %s" % (

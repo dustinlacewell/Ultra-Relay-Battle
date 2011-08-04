@@ -1,5 +1,3 @@
-from axiom.attributes import *
-
 from urb import contexts, db, commands, validation
 from urb.colors import colorize
 from urb.util import dlog, metadata

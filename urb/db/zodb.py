@@ -78,6 +78,20 @@ class DBGetException(DatabaseBaseException):
     pass
 
 class DBObject(Persistent):
+    def change_oid(self, tid, old_oid, new_oid):
+        if tid not in root:
+            raise DatabaseException('No such tree exists in root: "%s"' % tid)
+
+        tree = root[tid]
+
+        if new_oid in tree:
+            raise DatabaseException('The oid "%s" already exists in the "%s" tree.' % (new_oid, tid))
+        if old_oid not in tree:
+            raise DatabaseException('The oid "%s" does not exist in the "%s" tree.' % (old_oid, tid))
+
+        del tree[old_oid]
+        tree[new_oid] = self
+
     @classmethod
     def all(cls):
         return list(root[cls.__name__].values())
@@ -112,7 +126,7 @@ class DBObject(Persistent):
                 if len(invalid) == 0:
                     matched.append(item)
         return matched
-    
+
     @classmethod
     def delete(cls, **kwargs):
         all = cls.all()
@@ -148,23 +162,33 @@ class User( DBObject ):
         # Telnet
         self.naws_w = 80
         
+    def change_oid(self, nickname):
+        super(User, self).change_oid('User', self.nickname, nickname)
+
     @classmethod
     def create(cls, nickname, email, adminlevel=0, password=''):
+        # username is unique
+        if nickname in root['User']:
+            raise DatabaseException('User "%s" already exists.' % nickname)
+        # first-user is admin
         if len(cls.all()) == 0:
             adminlevel = 100
+        # set dob timestamp
         dob = datetime.datetime.now()
+        # create the new user
         newuser = cls(nickname, email, dob, adminlevel, password)
+        # store in tree
         root['User'][nickname] = newuser
         commit()
         return newuser
         
     def delete(self):
-        del root['User'][self.nickname]
-        commit()
-        
-    
+        if self.nickname in root['User']:
+            del root['User'][self.nickname]
+            commit()
 
 class Character( DBObject ):
+
     def __init__(self, selector):
         self.selector = selector
         self.fullname = selector
@@ -193,24 +217,24 @@ class Character( DBObject ):
     def __str__(self):
         return self.fullname
         
+    def change_oid(self, selector):
+        super(Character, self).change_oid('Character', self.selector, selector)
+
     @classmethod
     def create(cls, selector):
+        # selector is unique
+        if selector in root['Character']:
+            raise DatabaseException('Character "%s" already exists.' % selector)
         newchar = cls(selector)
         root['Character'][selector] = newchar
         commit()
         return newchar
     
     def delete(self):
-        del root['Character'][self.selector]
-        commit()
+        if self.selector in root['Character']:
+            del root['Character'][self.selector]
+            commit()
             
-    def change_selector(self, newkey):
-        tree = root['Character']
-        if newkey not in tree:
-            if self.selector in tree:
-                del tree[self.selector]
-                tree[newkey] = self
-    
     def get_gauge(self, attribute):
         val = getattr(self, attribute)
         bar = "*" * int(val / 10.0)
@@ -235,6 +259,7 @@ class Character( DBObject ):
         'fatality_msg', 'death_msg', 'taunt_msg', 'finalized')
 
 class Move( DBObject ):
+
     def __init__(self, selector, ownerselector):
         self.selector      = selector
         self.fullname      = selector
@@ -255,6 +280,16 @@ class Move( DBObject ):
         self.crit_hit_msg     = u''
         self.supr_hit_msg     = u''   
         
+    def change_oid(self, selector):
+        old_oid = (self.selector, self.ownerselector)
+        new_oid = (selector, self.ownerselector)
+        super(Move, self).change_oid('Move', old_oid, new_oid)
+
+    def delete(self):
+        if (self.selector, self.ownerselector) in root['Move']:
+            del root['Move'][(self.selector, ownerselector)]
+            commit()
+
     @classmethod
     def create(cls, selector, ownerselector):
         newchar = cls(selector, ownerselector)
@@ -262,19 +297,6 @@ class Move( DBObject ):
         commit()
         return newchar
     
-    def delete(self):
-        del root['Move'][(self.selector, ownerselector)]
-        commit()
-
-    def change_selector(self, newkey):
-        tree = root['Move']
-        oldkey = (self.selector, self.ownerselector)
-        newkey = (newkey, self.ownerselector)
-        if newkey not in tree:
-            if oldkey in tree:
-                del tree[oldkey]
-                tree[newkey] = self
-
     def _get_mpcost(self):
         return 300
     mpcost = property(_get_mpcost)
@@ -311,6 +333,9 @@ class GameSettings( DBObject ):
         self.damagemultiplier = 1.0
         self.mprate = 3
         
+    def change_oid(self, selector):
+        super(GameSettings, self).change_oid('GameSettings', self.selector, selector)
+
     @classmethod
     def create(cls, selector):
         newtype = cls(selector)

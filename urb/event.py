@@ -1,3 +1,5 @@
+from os import path
+
 class Signal(object):
     """A simple event system using direct callbacks.  
 

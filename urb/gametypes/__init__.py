@@ -8,6 +8,7 @@ from urb import imports, commands, validation, contexts, effects
 from urb.validation import ValidationError
 from urb.player import Player, Session
 from urb.util import dlog, dtrace, render, word_table
+from urb.gametypes.models import GameRecord, GameType
 
 def refresh( gametype_name ):
     return imports.refresh(gametype_name)
@@ -15,78 +16,86 @@ def refresh( gametype_name ):
 def get( gametype_name ):
     return imports.get('gametypes', gametype_name)
 
+class GameManager(object):
+    def __init__(self, app):
+        self.app = app
+        self.games = dict()
+
+    def create_game(self, gametype):
+        # get gametype
+        gametype = GameType.objects.get(selector=gametype)
+        # create game record
+        record = GameRecord(gametype=gametype)
+        record.save()
+        # load gametype's engine
+        engine_cls = get(gametype.engine)
+        engine = engine_cls(self.app, record.id)
+        # register game
+        self.games[record.id] = (LoopingCall(self.tick, record.id), engine)
+        return self.games[record.id]
+
+    def create_player(self, record_id, username):
+        user = User.objects.get(username=username)
+        record = GameRecord.objects.get(id=record_id)
+        player = Player.objects.get_or_create(user=user, game=record)
+        return player
+
+    def tick(self, record_id):
+        record = GameRecord(id=record_id)
+        looping_call, game = self.games[record_id]
+        players = record.players
+        game.tick(record, players)
+        record.save()
+        for player in players:
+            player.save()
+    
+
 class GameEngine(object):
     name = 'survivor'
 
-    def __init__(self, app):
+    def __init__(self, app, record_id):
         self.app = app
+        self.record_id = record_id
+        self._record = GameRecord.objects.get(id=self.record_id)
 
-        self.fighters = {}
-        self.next_team_id = 0
-        
-        self.gametime = 0
-        self.tickrate = 1.0
-        self.tick_timer = LoopingCall(self.tick)
-        self.actions = []
-        
-        self.state = "idle" # idle, selection prebattle battle
-        
-    def _get_players(self):
-        return self.app.players
-    players = property(_get_players)
-        
+    def _get_record(self):
+        return self._record
+    record = property(_get_record)
+
     def _get_settings(self):
-        gs = GameSettings.get(selector=self.name)
-        if gs == None:
-            gs = GameSettings.create(self.name)
-        return gs 
+        return self.record.gametype
     settings = property(_get_settings)
             
     def _get_paused(self):
-        return not self.tick_timer.running
+        return self.record.state == 'paused'
     paused = property(_get_paused)
             
     def get_ready(self):
-        ready = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.ready == True:
-                ready.append(theplayer)
-        return ready
+        return Player.objects.filter(game=self.record,
+                                     ready=True)
         
     def get_unready(self):
-        unready = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.ready == False:
-                unready.append(theplayer)
-        return unready
+        return Player.objects.filter(game=self.record,
+                                     ready=False)
         
     def get_team(self, id):
-        theteam = []
-        for nick, theplayer in self.fighters.iteritems():
-            if theplayer.team == id:
-                theteam.append(theplayer)
-        return theteam
+        return Team.objects.get(game=self.record,
+                                id=id)
         
     def get_allies(self, player):
-        theteam = self.get_team(player.team)
-        theteam.remove(player)
-        return theteam
+        return player.team.player_set.exclude(pk=player.id)
         
     def get_enemies(self, player):
-        enemies = []
-        for nick, otherplayer in self.fighters.iteritems():
-            if otherplayer.team != player.team:
-                enemies.append(otherplayer)
-        return enemies
-                
+        return Player.objects.filter(game=self.record).exclude(team=player.team)
+                                     
     def check_win_condition(self):
         pass
     
-    def find_target(self, player, ttype):
-        if ttype == 'ally':
+    def find_target(self, player, target_type):
+        if target_type == 'ally':
             allies = self.get_allies(player)
             return random.choice(allies)
-        elif ttype == 'enemy':
+        elif target_type == 'enemy':
             enemies = self.get_enemies(player)
             if len(enemies):
                 return random.choice(enemies)
@@ -96,13 +105,13 @@ class GameEngine(object):
             return player
             
     def validate_target(self, player, target, move):
-        ttype = move.target
+        ttype = move.target_type
         thetarget = None
         
         if not target and ttype in ['ally', 'enemy']:
             raise ValidationError( 
             "* The '%s' move requires a target. (%s)" % (move.fullname, ttype))
-        elif not target and ttype in ['self', 'ally-all', 'enemy-all']:
+        elif not target and ttype in ['self', 'allies', 'enemies']:
             return True
         elif target and ttype in ['ally', 'enemy']:
             thetarget, left = validation.fighter(self.app, target.nickname, [target.nickname])    

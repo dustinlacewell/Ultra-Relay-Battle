@@ -1,7 +1,6 @@
-import chardet, struct, collections                  # detect
+import os, chardet, struct, collections
 from collections import deque
 import traceback
-
 
 from twisted.application import internet
 from twisted.conch.telnet import TelnetTransport, TelnetProtocol, TelnetBootstrapProtocol
@@ -11,6 +10,10 @@ from twisted.conch.recvline import HistoricRecvLine
 from twisted.internet import protocol
 from twisted.protocols import basic
 from twisted.internet.protocol import ServerFactory
+
+# environment setup for Django project files
+os.environ['DJANGO_SETTINGS_MODULE'] = 'urb.web.settings'
+from django.conf import settings
 
 from urb.db import *
 from urb import app
@@ -316,7 +319,7 @@ class TelnetService(internet.TCPServer):
     
     def __init__(self, app):
         self.app = app
-        port = get_config().telnet_port
+        port = settings.TELNET_PORT
         self.factory = protocol.ServerFactory()
         self.factory.protocol = self.wtf
         internet.TCPServer.__init__(self, port, self.factory)

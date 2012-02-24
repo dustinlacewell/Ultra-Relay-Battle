@@ -10,6 +10,7 @@ from urb.event import Signal
 from urb.player import Player, Session
 from urb.util import dlog, dtrace
 from urb import contexts
+from urb.contexts.session import SessionManager
 
 class ApplicationClass(object):
     '''The root namespace object for URB, holding references to
@@ -40,41 +41,41 @@ class ApplicationClass(object):
         self.signals['login'].register(self.on_login)
         self.signals['logout'].register(self.on_logout)
         
-        self.players = {}
-        self.game = None
+        self.sessions = SessionManager(self)
+        self.games = GameManager(self)
         
         imports.load_all('commands')
         imports.load_all('gametypes')
 
-    def _get_lobbyists(self):
-        if self.game == None:
-            return self.players
-        else:
-            lobbyists = {}
-            for nickname, player in self.players.iteritems():
-                if nickname not in self.game.fighters:
-                    lobbyists[nickname] = player
-            return lobbyists
-    lobbyists = property(_get_lobbyists)
+    # def _get_lobbyists(self):
+    #     if self.game == None:
+    #         return self.players
+    #     else:
+    #         lobbyists = {}
+    #         for nickname, player in self.players.iteritems():
+    #             if nickname not in self.game.fighters:
+    #                 lobbyists[nickname] = player
+    #         return lobbyists
+    # lobbyists = property(_get_lobbyists)
             
     def on_global_msg(self, message):
         config = db.get_config()
-        logchannel = config.irc_log_channel
-        mainchannel = config.irc_main_channel
-        to = self.game.players.keys()
-        to.append(logchannel)
-        to.append(mainchannel)
-        for recipient in to:
+        # logchannel = config.irc_log_channel
+        # mainchannel = config.irc_main_channel
+        # to = self.game.players.keys()
+        # to.append(logchannel)
+        # to.append(mainchannel)
+        for recipient in self.sessions.usernames:
             self.signals['outgoing_msg'].emit(recipient, message)
             
-    def set_game(self, gametype):
-        self.game = gametype(self)
-        self.game.open_selection()
+    # def set_game(self, gametype):
+    #     self.game = gametype(self)
+    #     self.game.open_selection()
         
-    def unset_game(self):
-        if self.game:
-            self.game.abort_battle()
-            self.game = None
+    # def unset_game(self):
+    #     if self.game:
+    #         self.game.abort_battle()
+    #         self.game = None
                     
     def _register_listeners(self, service):
         '''
@@ -107,6 +108,13 @@ class ApplicationClass(object):
         log("%s started." % name)
         service.setServiceParent(self.application)
         self._services[name] = service
+
+    def inject_service(self, svc_inst, svc_name):
+        log("Injecting %s" % svc_name)
+        self._register_listeners(svc_inst)
+        svc_inst.setServiceParent(self.application)
+        self._services[name] = svc_inst
+        log("%s injected." % svc_name)
         
     def start_service(self, name):
         svc = self.application.getServiceName(name)
@@ -131,11 +139,14 @@ class ApplicationClass(object):
             return IService(svc.running)
             
     def tell(self, player, message, fmt=" <"):
+        username = player.user.username
         if message.strip():
-             for line in wrap(message, player.linewidth, drop_whitespace=False, replace_whitespace=False):
-                self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=player.linewidth))
+            wrapped = wrap(message, player.linewidth, 
+                           drop_whitespace=False, replace_whitespace=False)
+            for line in wrapped:
+                self.signals['outgoing_msg'].emit(username, "- {0:{fmt}{mlw}}".format(line, fmt=fmt, mlw=player.linewidth))
         else:
-            self.signals['outgoing_msg'].emit(player.nickname, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
+            self.signals['outgoing_msg'].emit(username, "- {0:{fmt}{mlw}}".format(message, fmt=fmt, mlw=player.linewidth))
     
     def lsay(self, message, fmt=" <", channel=True):
         config = db.get_config()

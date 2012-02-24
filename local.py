@@ -1,31 +1,14 @@
+IRC_NETWORK = 'irc.freenode.net'
+IRC_PORTS = [6667, 8001, 6668, 8002]
+IRC_NICK = 'TheHost'
+IRC_MAIN_CHANNEL = '#urb'
+IRC_LOG_CHANNEL = '#urb-log'
+IRC_NICK_PASS = 'mdcclxxvi'
+IRC_CHANNEL_PASS = 'mdcclxxvi'
 
-#
-#IRC
-#
+DCC_LISTEN_IP = '131.156.7.120'
+DCC_LISTEN_PORT = 8004
 
-# Connection
-irc_network = 'irc.freenode.net'
-irc_ports = [6667, 8001, 6668, 8002]
-irc_nick = 'TheHost'
-# Channels
-irc_main_channel = "#urb"
-irc_log_channel = "#urb-log"
-# Passwords
-irc_nick_pass = "mdcclxxvi"
-irc_channel_pass = "mdcclxxvi"
+TELNET_PORT = 8005
 
-#
-#DCC
-#
-
-# Connection
-dcc_listen_ip = '131.156.7.120'
-dcc_listen_port = 8004
-
-#
-#Telnet
-#
-
-
-# Connection
-telnet_port = 8005
+DJANGO_PORT = 8080

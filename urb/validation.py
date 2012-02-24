@@ -17,11 +17,12 @@
     'message' all strings are consumed and concatenated to 
     form the validated value.
     """
-from urb.db import *
 from urb.commands import get_name
 from urb.constants import elements
 from urb import contexts
-
+from urb.players.models import Player
+from urb.characters.models import Character, Move
+from urb.gametypes.models import GameType
 from urb.util import dlog, dtrace
 
 class ValidationError(Exception):
@@ -74,48 +75,32 @@ def element(app, name, argsleft):
 def user(app, name, argsleft):
     """Validate argument to an existing user."""
     nick = argsleft.pop(0)
-    user = User.get(nickname=nick)
-    if not user:
-        choices = [n.nickname for n in User.all() if n.nickname.startswith(nick)]
-        raise ValidationError("'%s' is not a valid user." % nick, user, choices)
-    else:
+    try: 
+        user = User.objects.get(username=nick)
         return user, argsleft
+    except User.DoesNotExist:
+        choices = User.objects.filter(username__startswith=nick)
+        raise ValidationError("'%s' is not a valid user." % nick, user, choices)
         
-def player(app, name, argsleft):
+def player(app, record, name, argsleft):
     """Validate argument to a logged on player."""
     nick = argsleft.pop(0)
-    try:
-        plrobj = app.players[nick]
-    except KeyError:
-        choices = [p.nickname for p in app.players.itervalues() if p.nickname.startswith(nick)]
+    try: 
+        player = Player.objects.get(game=record, 
+                                    user__username=nick)
+        return plrobj, argsleft
+    except Player.DoesNotExist:
+        choices = Player.objects.filter(game=record, 
+                                        user__username__startswith=nick)
         raise ValidationError("'%s' is not currently signed on." % nick, player, choices)
-    else:
-        return plrobj, argsleft
         
-def fighter(app, name, argsleft):
-    """Validate argument to a fighting player."""
-    nick = argsleft.pop(0)
-    try:
-        plrobj = app.game.fighters[nick]
-    except KeyError:
-        choices = [f.nickname for f in app.game.fighters.itervalues() if f.nickname.startswith(nick)]
-        raise ValidationError("'%s' is not an active fighter." % nick, fighter, choices)
-    else:
-        return plrobj, argsleft
-        
-def character(app, name, argsleft, player=None):
+def character(app, name, argsleft):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
-    kwargs = {'selector':selector}
-    print "CONTEXT BUILDER:", contexts.get('builder')
-    if player and not isinstance(player.session.context,  contexts.get('builder')):
-        kwargs['finalized'] = 1
-    char = Character.filter(**kwargs)
-    if char:
-        return char[0], argsleft
-    else:
-        del kwargs['selector']
-        choices = [c.selector for c in Character.filter(**kwargs) if c.selector.startswith(selector)]
+    try: 
+        character = Character.objects.get(selector=selector)
+    except Character.DoesNotExist:
+        choices = Character.objects.filter(selector__startswith=selector)
         raise ValidationError("'%s' is not a valid character selector." % selector, character, choices)
     
 def cattr(app, name, argsleft):
@@ -127,18 +112,20 @@ def cattr(app, name, argsleft):
         choices = [a for a in Character.vorder if a.startswith(attrname)]
         raise ValidationError("'%s' is not a valid character attribute." % attrname, cattr, choices)
         
-def move(app, name, argsleft, char=None):
+def move(app, name, argsleft, char_selector=None):
     """Validate argument to a *LIST* of existing moves."""
     selector = argsleft.pop(0)
     kwargs = {'selector':selector}
-    if char:
-        kwargs['ownerselector'] = char.selector
-    moves = Move.filter(**kwargs)
+    if char_selector:
+        char = Character.objects.get(selector=char_selector)
+        kwargs['character'] = char
+    moves = Move.objects.filter(**kwargs)
     if len(moves):
         return moves, argsleft
     else:
         del kwargs['selector']
-        choices = [m.selector for m in Move.filter(**kwargs) if m.selector.startswith(selector)]
+        kwargs['selector__startswith'] = selector
+        choices = Move.objects.filter(**kwargs)
         raise ValidationError("'%s' is not a valid move selector." % selector, move, choices)
     
 def mattr(app, name, argsleft):
@@ -152,23 +139,18 @@ def mattr(app, name, argsleft):
         
 def gametype(app, name, argsleft):
     """Validate argument to an existing gametype."""
-    from urb import gametypes
-    typename = argsleft.pop(0)
-    gt = gametypes.get(typename)
-    if gt:
-        gt = GameSettings.get(selector=typename)
-        if gt == None:
-            gt = GameSettings.create(selector=typename)
+    selector = argsleft.pop(0)
+    try: 
+        gt = GameType.objects.get(selector=selector)
         return gt, argsleft
-        
-    else:
-        choices = [g.selector for g in GameSettings.all() if g.selector.startswith(typename)]
-        raise ValidationError("'%s' is not a valid gametype." % typename, gametype, choices)
+    except GameType.DoesNotExist:
+        choices = GameType.objects.filter(selector__startswith=selector)
+        raise ValidationError("'%s' is not a valid gametype." % selector, gametype, choices)
     
 def gattr(app, name, argsleft):
     """Validate argument to an attribute on a gametype."""
     attrname = argsleft.pop(0)
-    if attrname in GameSettings.vorder:
+    if attrname in GameType.vorder:
         return attrname, argsleft
     else:
         choices = [a for a in GameSettings.vorder if a.startswith(attrname)]
@@ -177,14 +159,13 @@ def gattr(app, name, argsleft):
 ## END VALIDATORS ##
 
 types = {
-        
         'int':integer, 
         'float':floating,
         'str':string, 
         'msg':message, 
         
         'user':user, 
-        'player':player, 'fighter':fighter,
+        'player':player,
         'char':character, 'cattr':cattr,
         'move':move, 'mattr':mattr,
         'gtype':gametype, 'gattr':gattr, 

@@ -1,0 +1,43 @@
+
+* Ultra Relay Battle
+  Ultra Relay Battle is a *realtime* text-based fighting game. It features an
+  unlimited character roster and a rich battle system including magical status
+  affects, weapons, powerups, attack "Supering" system, a countering system,
+  different gamemodes and game altering talismans. With a virtually limitless
+  variety of characters and an action packed combat system you'll keep coming
+  back to URB to best your friends again and again.
+
+** What can I expect?
+   URB is text-based. While it provides rich (and dynamic) descriptions of the
+   action taking place it will rely on your suspension of belief and
+   imagination. If you are comfortable with MUDs or Interfactive-Fiction you'll
+   likely really enjoy the fast tactical action of URB. If you're not familiar
+   with those other things, then your response will be hard to predict.
+
+   URB is played through a telnet session. That means you don't have to install
+   *anything* to play it. After creating a user you'll be placed into the lobby
+   where you can join or watch any games taking place, browse the Character
+   roster or view the Statbook.
+
+** What's the game like?
+   When you participate in a battle you choose a Character to play with. Each
+   Character has different stats that determine its abilities in combat. Each
+   Character has a collection of Moves that it can perform. These Moves can be
+   varied in nature; anything from Physical attacks to Magical spells that can
+   apply one or more of the many Status Effects. The attacks each target an ally,
+   an enemy, the player themselves or sometimes everyone in play!
+
+   Players will be attacking, counter-attacking, healing, blocking, muting,
+   slowing, shooting, poisoning, blessing, tripping, choking, shooting, slamming
+   and otherwise fighting each other for their pride and for their lives.
+
+   Weapons and items provide additional boosts in the form of either Stat
+   Bonuses, Status Effects or even extra limited-use Moves. As players give and
+   recieve damage they recieve Super Points that can be used to perform
+   higher-level versions of moves dealing ever greater amounts of crushing
+   damage. Players who are near death face the risk of being Fatalitied with
+   dramatic Character unique finishers rewarding the executing player large
+   amounts of points which can earn the player achievements and token rewards. In
+   certain Gametypes, the players can select play affecting Talismans before the
+   battle starts on a first-come first serve basis.
+

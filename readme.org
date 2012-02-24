@@ -41,3 +41,11 @@
    certain Gametypes, the players can select play affecting Talismans before the
    battle starts on a first-come first serve basis.
 
+   In combat your Character can only do one thing at a time. Most actions you
+   initiate will take a certain amount of time to perform. While performing these
+   actions the Player is vulnerable to attack. To defend oneself they must stop
+   any existing action before they can utilizing a block, heal or the
+   counter-attack system. This nature of stateful delay-based combat becomes
+   signifigantly more tactical when the notions of buffs, status effects and
+   supering are introduced. With team-based play or in gamemodes like Zombie
+   where defeated players rise again and again the battle can be simply wild.

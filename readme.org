@@ -44,7 +44,7 @@
    In combat your Character can only do one thing at a time. Most actions you
    initiate will take a certain amount of time to perform. While performing these
    actions the Player is vulnerable to attack. To defend oneself they must stop
-   any existing action before they can utilizing a block, heal or the
+   any existing action before they can utilize a block, heal or the
    counter-attack system. This nature of stateful delay-based combat becomes
    signifigantly more tactical when the notions of buffs, status effects and
    supering are introduced. With team-based play or in gamemodes like Zombie

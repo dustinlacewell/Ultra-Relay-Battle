@@ -66,21 +66,21 @@ See INFO for: commands, contexts
         return helplines
     
     def perform(self):
-        clocals, cglobals = commands.get_allowed(self.player)
-        context = self.player.session.context
+        clocals, cglobals = commands.get_allowed(self.session)
+        context = self.session.context
         try: command = self.args['command']
         except KeyError:
             if context.__doc__:
-                self.player.tell("", fmt="-<")
+                self.session.msg("", fmt="-<")
                 for wline in context.__doc__.splitlines():
                     for line in wrap(wline, self.player.linewidth):
-                        self.player.tell(line)
-#                self.player.tell("", fmt="-<")
-                self.player.tell("AVAILABLE COMMANDS ('all' for more)", fmt="-<")
+                        self.session.msg(line)
+#                self.session.msg("", fmt="-<")
+                self.session.msg("AVAILABLE COMMANDS ('all' for more)", fmt="-<")
                 available = ['help', 'all'] + clocals
                 available = ", ".join(available)
                 for line in wrap(available, self.player.linewidth):
-                    self.player.tell(line)
+                    self.session.msg(line)
         else:
             comobj = None
             if command in clocals+cglobals:
@@ -92,10 +92,10 @@ See INFO for: commands, contexts
                     if comobj:
                         if comobj.__doc__ or hasattr(comobj, 'schema'):
                             for line in self._get_help(comobj):
-                                self.player.tell(line)
+                                self.session.msg(line)
                         else:
-                            self.player.tell("Sorry, no help is available for '%s'." % command)
+                            self.session.msg("Sorry, no help is available for '%s'." % command)
                     else:
-                        self.player.tell("Sorry, %s is not a command." % command)
+                        self.session.msg("Sorry, %s is not a command." % command)
 
 exported_class = HelpCommand

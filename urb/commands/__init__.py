@@ -2,17 +2,18 @@ import sys
 from textwrap import wrap
 
 from urb import imports
+from urb.players.models import Player
 from urb.util import dlog
 from urb.constants import MLW
 
-PLAYER = 0
-BUILDER = 80
-MODERATOR = 90
-ADMIN = 100
+PLAYER = 'player'
+BUILDER = 'builder'
+MODERATOR = 'moderator'
+ADMIN = 'admin'
 
 class Command(object):
     # default required admin level
-    adminlevel = PLAYER
+    admin_group = PLAYER
     # default to no associated delay
     tick_delay = None
     # Set to False right before perform is called,
@@ -20,11 +21,12 @@ class Command(object):
     # an additional tick.
     alive = False
 
-    def __init__(self, app, player, args):
+    def __init__(self, session, args):
         # save reference to application
-        self.app = app
+        self.session = session
+        self.app = session.app
         # save reference to player object
-        self.player = player
+        self.player = Player.objects.get(id=session.pid)
         # save reference to validated arguments
         self.args = args
 
@@ -39,7 +41,7 @@ def get( command_name ):
     """Return the command class for the given command-name."""
     return imports.get('commands', command_name)
     
-def get_allowed(player):
+def get_allowed(session):
     """
     Return a list command classes a player can run in their current context based
     on admin level. all designates non-contextual commands should be included.
@@ -47,12 +49,12 @@ def get_allowed(player):
     """
     callowed = []
     cglobals = []
-    adminlevel = player.user.adminlevel
-    for name, comobj in player.session.context.get_commands().iteritems():
-            if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
-                callowed.append(name)
+    player = Player.objects.get(id=session.pid)
+    groups = [g.name for g in player.groups.all()]
+    for name, comobj in session.context.get_commands().iteritems():
+        callowed.append(name)
     for name, comobj in imports.load_all('commands').iteritems():
-        if not hasattr(comobj, 'adminlevel') or comobj.adminlevel <= adminlevel:
+        if comobj.admin_group in groups or player.is_superuser:
             cglobals.append(name)
     return callowed, cglobals
     

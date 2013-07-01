@@ -1,17 +1,17 @@
 from random import randint, choice
-from urb.effects import StatusEffect
+from urb.effects.base_models import ActiveEffect
 from urb.util import render
 
-class PoisonEffect(StatusEffect):
+class PoisonEffect(ActiveEffect):
 
     name = 'poison'
     verb = 'poisoned'
     shorthand = 'PO'
 
-    minticks = 5
-    maxticks = 15
-    minhits = 2
-    maxhits = 5
+    lowerticks = 5
+    upperticks = 15
+    lowerhits = 2
+    upperhits = 5
 
     apply_msgs = [
         "{t} has been poisoned!",
@@ -31,18 +31,12 @@ class PoisonEffect(StatusEffect):
         "{t} vomits violently. [{h}]",
     ]
 
-    def __init__(self, app, source, move, target):
-        super(PoisonEffect, self).__init__(app, source, move, target)
-
-        self.total_damage = 0
-
-        self.ticklimit = randint(self.minticks, self.maxticks)
-        self.hitlimit = randint(self.minhits, self.maxhits)
-
-    def oh_hit(self):
+    def on_hit(self, game):
         damage = randint(5, 30)
         self.total_damage += damage
         self.target.health -= damage
+        self.save()
+        self.target.save()
         return {'h':damage}
 
     def on_death(self):

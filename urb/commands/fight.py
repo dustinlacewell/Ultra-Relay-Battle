@@ -8,19 +8,27 @@ Sign up for battle and choose a character!
 """
 
     adminlevel = commands.PLAYER
-    schema=(('char*','selector'),)
+    schema=(('game*','gameslug'), ('char*', 'cselector'))
     def perform(self):
-        if self.app.game:
-            if self.player in self.app.game.fighters:
-                self.player.tell("You're already a participant in battle.")
-            elif self.app.game.state == 'selection':
-                if 'selector' in self.args and self.args['selector'].finalized == 0:
-                    self.player.tell("'%s' is not a valid character selector." % self.args['selector'].selector)
+        if 'gameslug' in self.args:
+            lcall, engine = self.args['gameslug']
+            if self.player in engine.record.players:
+                self.session.msg("You're already a participant in battle.")
+            elif engine.state == 'selection':
+                if 'cselector' in self.args and self.args['cselector'].finalized == 0:
+                    self.session.msg("'%s' is not a valid character selector." % self.args['selector'].selector)
                 else:
-                    self.app.game.player_signup(self.player, self.args['selector'] if self.args else None)
+                    self.app.games.register_player(engine.record_id, self.session.pid, self.args['cselector'] if self.args else None)
             else:
-                self.player.tell("Character selection isn't currently open right now.")
+                self.session.msg("Character selection isn't currently open right now.")
         else:
-            self.player.tell("Character selection isn't currently open right now.")
-            
+            if len(self.app.games):
+                self.session.msg("Currently available games:")
+                for gid, gameinfo in self.app.games.items():
+                    lcall, engine = gameinfo
+                    msg = "%s\t- %s\t- %s players"
+                    msg = msg % (gid, engine.record.state, engine.players.count())
+                    self.session.msg(msg)
+            else:
+                self.session.msg("There are no available games.")
 exported_class = FightCommand

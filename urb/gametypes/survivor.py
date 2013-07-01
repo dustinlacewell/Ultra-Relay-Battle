@@ -1,4 +1,4 @@
-from urb.gametypes import GameEngine
+from urb.gametypes.engine import GameEngine
 
 class Survivor(GameEngine):
     name = "survivor"

@@ -50,7 +50,7 @@ class BattleContext(contexts.Context):
                         
     def com_roster(_self, self, args):
         """Get the current battle roster."""
-        self.player.tell(" - The current battle-roster - ", fmt=" ^")
+        self.session.msg(" - The current battle-roster - ", fmt=" ^")
         parts = []
         for nick, player in self.app.game.fighters.iteritems():
             char = player.character.fullname if player.character else "NO CHAR"
@@ -58,31 +58,31 @@ class BattleContext(contexts.Context):
             parts.append("  -  %d HP : %d MP : %d SP %s" % (player.health, player.magicpoints, player.superpoints, ": READY" if player.ready else ""))
             lines = word_table(parts, 2, fmt=" <")
         for line in lines:
-            self.player.tell(line)
+            self.session.msg(line)
     
     @metadata(schema=(('fighter*', 'nickname'),))           
     def com_status(_self, self, args):
         """Get the status for a player or yourself."""
         if 'nickname' in args:
-            self.player.tell(args['nickname'].status_msg)
+            self.session.msg(args['nickname'].status_msg)
         else:
-            self.player.tell(self.player.status_msg)
+            self.session.msg(self.player.status_msg)
             
     def com_block(_self, self, args):
         """Block any incomming attacks."""
         # check for move prevention: stun
         if 'stun' in self.player.effects:
-            self.player.tell(self.player.effects['stun'].get_denial('block'))
+            self.session.msg(self.player.effects['stun'].get_denial('block'))
         elif self.player.ready:
             bcommand = BlockCommand(self.app, self.player)
             self.player.current_move = bcommand
         else:
             if self.player.current_move.target:
-                self.player.tell("* You can't block while you're doing '%s' on %s." % (
+                self.session.msg("* You can't block while you're doing '%s' on %s." % (
                 self.player.current_move.name,
                 self.player.current_move.target))
             else:
-                self.player.tell("* You can't block while you're doing '%s'." % (
+                self.session.msg("* You can't block while you're doing '%s'." % (
                 self.player.current_move.name))           
                 
     def com_halt(_self, self, args):
@@ -93,8 +93,8 @@ class BattleContext(contexts.Context):
         """Show a list of moves for your character."""
         thechar = self.player.character
         themoves = thechar.moves
-        self.player.tell("%s's moves are :" % thechar.fullname)
+        self.session.msg("%s's moves are :" % thechar.fullname)
         for move in themoves:
-            self.player.tell(move.info)
+            self.session.msg(move.info)
 
 exported_class = BattleContext

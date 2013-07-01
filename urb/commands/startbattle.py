@@ -12,12 +12,12 @@ Force the battle to begin.
     def perform(self):
         if self.app.game:
             if self.app.game.state == "selection":
-                self.player.tell("Character selection is still open. (closeselect)")
+                self.session.msg("Character selection is still open. (closeselect)")
             elif self.app.game.state == "battle":
-                self.player.tell("The battle has already started.")
+                self.session.msg("The battle has already started.")
             else:
                 self.app.game.start_battle()
         else:
-            self.player.tell("There is no battle to start. (openselect)")
+            self.session.msg("There is no battle to start. (openselect)")
             
 exported_class = StartBattleCommand

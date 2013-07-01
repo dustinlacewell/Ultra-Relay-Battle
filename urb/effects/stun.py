@@ -1,5 +1,6 @@
 from random import randint, choice
-from urb.effects import StatusEffect
+from urb.effects.models import StatusEffect
+from urb.players.models import Action
 from urb.util import render
 
 class StunEffect(StatusEffect):
@@ -7,8 +8,8 @@ class StunEffect(StatusEffect):
     name = 'stun'
     verb = 'stunned'
 
-    minticks = 5
-    maxticks = 8
+    lowerticks = 5
+    upperticks = 8
 
     apply_msgs = [
         "{t} has been knocked unconscious!",
@@ -21,14 +22,8 @@ class StunEffect(StatusEffect):
         "{t} is no longer asleep",
     ]
 
-    def __init__(self, app, source, move, target):
-        super(StunEffect, self).__init__(app, source, move, target)
-        self.ticklimit = randint(self.minticks, self.maxticks)
-
     def apply(self):
-        if self.target.current_move:
-            self.target.current_move.alive = False
-            self.target.current_move = None
+        Action.objects.filter(player=self.target).delete()
         super(StunEffect, self).apply()
 
     def get_denial(self, move):

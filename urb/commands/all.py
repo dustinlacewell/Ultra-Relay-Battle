@@ -12,15 +12,15 @@ Lists all commands (including globals) that are available to you.
     adminlevel = commands.PLAYER
     
     def perform(self):
-        clocals, cglobals = commands.get_allowed(self.player) 
+        clocals, cglobals = commands.get_allowed(self.session) 
         clocals = ", ".join(clocals)
         cglobals = ", ".join(cglobals)
         if clocals and cglobals:
             listing = clocals + ", " + cglobals
         else:
             listing = clocals if clocals else cglobals if cglobals else ""
-        self.player.tell("ALL COMMANDS", fmt="-<")
+        self.session.msg("ALL COMMANDS", fmt="-<")
         for line in wrap(listing, self.player.linewidth):
-            self.player.tell(line)
+            self.session.msg(line)
 
 exported_class = AllCommand

@@ -1,4 +1,4 @@
-import sys, traceback, StringIO
+import sys, traceback, StringIO, base64, struct
 
 from twisted.python.log import msg as log
 
@@ -43,3 +43,20 @@ def word_table(items, perline, fmt=" ^"):
         result = ''.join('{2:{0}{1}}'.format(fmt, MLW / len(_items), i) for i in _items)
         lines.append(result)
     return lines
+
+def _get_struct_type(val):
+    if val < 256:
+        return 'H'
+    return 'I'
+
+def int_to_slug(val):
+    type = _get_struct_type(val)
+    s = base64.b32encode(struct.pack(type, val))
+    s = s.replace('=', '')
+    while s[-1] == 'A' and len(s) > 2:
+        s = s[:-1]
+    return s
+
+def slug_to_int(slug):
+    s = base64.b32decode(slug + ('A' * (7 - len(slug))) + '=')
+    return struct.unpack('i', s)[0]

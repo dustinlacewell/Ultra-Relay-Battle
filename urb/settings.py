@@ -1,3 +1,5 @@
+from base_settings import *
+
 IRC_NETWORK = 'irc.freenode.net'
 IRC_PORTS = [6667, 8001, 6668, 8002]
 IRC_NICK = 'TheHost'
@@ -11,4 +13,3 @@ DCC_LISTEN_PORT = 8004
 
 TELNET_PORT = 8005
 
-DJANGO_PORT = 8080

@@ -1,4 +1,3 @@
-from urb.db import *
 from urb import commands
 from urb.colors import colorize
 from urb.util import dlog, metadata
@@ -22,41 +21,41 @@ Get information on a chararcter or character move.
                         themove = move
                 if themove:
                     mselector = move.selector
-                    self.player.tell(themove.info)
+                    self.session.msg(themove.info)
                 else:
-                    self.player.tell("'%s' doesn't have that move." %(cselector, ))
+                    self.session.msg("'%s' doesn't have that move." %(cselector, ))
             else:
                 moves = char.moves
-                self.player.tell("%s (%s)" % (char.fullname, char.selector))
-                self.player.tell("Physical Str: %s" % char.get_gauge('pstrength'))
-                self.player.tell("Physical Def: %s" % char.get_gauge('pdefense'))
-                self.player.tell("Magical Str:  %s" % char.get_gauge('mstrength'))
-                self.player.tell("Magical Def:  %s" % char.get_gauge('mdefense'))
+                self.session.msg("%s (%s)" % (char.fullname, char.selector))
+                self.session.msg("Physical Str: %s" % char.get_gauge('pstrength'))
+                self.session.msg("Physical Def: %s" % char.get_gauge('pdefense'))
+                self.session.msg("Magical Str:  %s" % char.get_gauge('mstrength'))
+                self.session.msg("Magical Def:  %s" % char.get_gauge('mdefense'))
                 if char.weakness != 'none': 
-                    self.player.tell("Is weak to %s effects" % char.weakness)
+                    self.session.msg("Is weak to %s effects" % char.weakness)
                 if char.resistance != 'none': 
-                    self.player.tell("Is resistant to %s effects" % char.resistance)
-                self.player.tell("-- Moves " + ("-" * 32))
+                    self.session.msg("Is resistant to %s effects" % char.resistance)
+                self.session.msg("-- Moves " + ("-" * 32))
                 for move in moves:
                     mselector = move.selector
-                    self.player.tell( move.info)
+                    self.session.msg( move.info)
         else:
             chars = [ char.selector for char in Character.all() if char.finalized != 0]
             unfinished = [ char.selector for char in Character.all() if char.finalized == 0]
-            self.player.tell("Ultra Relay Battle - Character listing :")
+            self.session.msg("Ultra Relay Battle - Character listing :")
             send = ""
             for char in chars:
                 oldsend = send
                 send = "%s%s " % (send, ("'%s' " % char))
                 if len(send) >= 255:
-                    self.player.tell(oldsend)
+                    self.session.msg(oldsend)
                     send = ("%s " % char)
                 elif len(send) >= 245:
-                    self.player.tell(send)
+                    self.session.msg(send)
                     send = ""
             if unfinished and self.player.session.context_name == 'builder':
                 send += "\nUnfinished: %s" % (", ".join(unfinished))
             if send:
-                self.player.tell(send)
+                self.session.msg(send)
              
 exported_class = CharsCommand

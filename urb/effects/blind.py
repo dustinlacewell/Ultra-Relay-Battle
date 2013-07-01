@@ -1,6 +1,6 @@
 from random import randint, choice
 
-from urb.effects import StatusEffect
+from urb.effects.base_models import StatusEffect
 from urb.util import render
 
 class BlindEffect(StatusEffect):
@@ -12,7 +12,7 @@ class BlindEffect(StatusEffect):
     ticklimit = 15
 
     apply_msgs = [
-	"{t} loses there vision completley!",
+	"{t} loses their vision completley!",
     ]
 
     remove_msgs = [

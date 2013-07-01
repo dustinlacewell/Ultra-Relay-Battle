@@ -9,7 +9,7 @@ Enter build mode and access commands for desiging game assets.
     adminlevel = commands.BUILDER
     
     def perform(self):
-        self.player.session.switch('builder')
+        self.session.switch('builder')
         self.alive = False
 
 exported_class = BuilderCommand

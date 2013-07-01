@@ -8,7 +8,6 @@ from twisted.persisted import styles
 from twisted.protocols import basic
 from twisted.words.protocols.irc import IRCClient, DccChat
 
-from urb.db import *
 from urb import app
 from urb.colors import colorize
 from urb.util import dlog

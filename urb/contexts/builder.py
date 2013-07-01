@@ -1,6 +1,7 @@
-from urb import contexts, db, commands, validation
+from urb import contexts, commands, validation
 from urb.colors import colorize
 from urb.util import dlog, metadata
+from urb.characters.models import Character, Move
 from urb.constants import *
 
 class BuilderContext(contexts.Context):
@@ -14,7 +15,7 @@ http://ldlework.com/wiki/urb/building
 """
 
     def enter(_self, self):
-        self.app.do_command(self.player, 'help', [])  
+        self.cmd('help', [])  
             
         _self.working = None
             
@@ -34,9 +35,9 @@ http://ldlework.com/wiki/urb/building
 Create a new character.
 """
         selector = unicode(args['selector'])
-        char = db.Character.create(selector)
+        char = Character.objects.create(selector=selector)
         if char:
-            self.player.tell("'%s' character succesfully created." % args['selector'])
+            self.msg("'%s' character succesfully created." % args['selector'])
             _self.working = char
             
     @metadata(schema=(('char','character'), ('str', 'selector')))
@@ -46,9 +47,14 @@ Create a new character move.
 """
         char = args['character']
         selector = unicode(args['selector'])
-        move = db.Move.create(selector, char.selector)
+        move = Move.objects.create(
+            selector=selector, 
+            character=Character.objects.get(
+                selector=char.selector
+            ),
+        )
         if move:
-            self.player.tell("'%s' move successfully created for '%s'." % (selector, char.selector))
+            self.msg("'%s' move successfully created for '%s'." % (selector, char.selector))
             _self.working = char
     
     @metadata(adminlevel=100, schema=(('char', 'selector'), ))
@@ -56,14 +62,19 @@ Create a new character move.
         """
 Permanently delete character.
 """
-        db.Character.get(selector=args['selector'].selector).delete()
+        Character.objects.get(
+            selector=args['selector'].selector
+        ).delete()
             
     @metadata(adminlevel=100, schema=(('char', 'cselector'), ('move', 'mselector'),))
     def com_rmmove(_self, self, args):
         """
 Permanently delete a character move.
 """
-        db.Move.get(ownerselector=args['cselector'].selector, selector=args['mselector'].selector).delete()
+        Move.get(
+            character=args['cselector'].selector, 
+            selector=args['mselector'].selector
+        ).delete()
             
     @metadata(schema=(('char','selector'), ('msg*','filters')))
     def com_lsc(_self, self, args):
@@ -75,7 +86,7 @@ pass in can be partial and will print any attributes that they match. Passing
 """
 
         char = args['selector']
-        attrs =  db.Character.vorder
+        attrs =  Character.vorder
         fields = attrs
         # apply autocomplete filters
         if 'filters' in args:
@@ -87,14 +98,14 @@ pass in can be partial and will print any attributes that they match. Passing
                         newfields.append(attr)
             fields = newfields
         for field in fields:
-            self.player.tell("%s%s: %s" % (
+            self.msg("%s%s: %s" % (
                 field, (20 - len(field)) * " ", getattr(char, field)))
                 
         movelist = [move.selector for move in char.moves]
         movelist = ", ".join(movelist)
         if 'filters' not in args and movelist:
-            self.player.tell("-" * 80)
-            self.player.tell("Moves: %s" % movelist)
+            self.msg("-" * 80)
+            self.msg("Moves: %s" % movelist)
             
     @metadata(schema=(('char','pselector'), ('move', 'mselector'), ('msg*', 'filters')))
     def com_lsm(_self, self, args):
@@ -105,7 +116,7 @@ will print any attributes that they match. Passing 'can' would return both
 the can* booleans, for example. In this command mselector can also be partial.
 """ 
         char = args['pselector']
-        attrs = db.Move.vorder
+        attrs = Move.vorder
         fields = attrs
         vmovelist = args['mselector']
         movelist = char.moves
@@ -124,10 +135,10 @@ the can* booleans, for example. In this command mselector can also be partial.
                             newfields.append(attr)
                 fields = newfields
             for field in fields:
-                self.player.tell("%s%s: %s" % (
+                self.msg("%s%s: %s" % (
                     field, (20 - len(field)) * " ", getattr(themove, field)))
         else:
-            self.player.tell("'%s' mselector argument didn't match any moves on '%s'." % (mselector, char.selector))
+            self.msg("'%s' mselector argument didn't match any moves on '%s'." % (mselector, char.selector))
 
     @metadata(schema=(('gtype','gametype'), ('msg*','filters')))
     def com_lsg(_self, self, args):
@@ -151,7 +162,7 @@ pass in can be partial and will print any settings that they match. Passing
                         newfields.append(attr)
             fields = newfields
         for field in fields:
-            self.player.tell("%s%s: %s" % (
+            self.msg("%s%s: %s" % (
                 field, (20 - len(field)) * " ", getattr(gtype, field)))    
             
     @metadata(schema=(('gtype', 'gametype'), ('gattr', 'attribute'), ('msg', 'value')))
@@ -177,7 +188,7 @@ certain type of value, like an number or a single word.
                 fields.append(field)
 
         if len(fields) > 1:
-            self.player.tell("Possible attributes: " + ", ".join(fields))
+            self.msg("Possible attributes: " + ", ".join(fields))
         elif len(fields) == 1:
             try:
                 field = fields[0]
@@ -185,13 +196,13 @@ certain type of value, like an number or a single word.
                 validator = validators[vtype]
                 val, left = validator(self.app, field, value)
             except validation.ValidationError, e:
-                self.player.tell(e.message)
+                self.msg(e.message)
             else:
                 setattr(gtype, field, val)
                 args['filters'] = attr
                 _self.com_lsg(self, args)
         else:
-            self.player.tell("Sorry, there is no gametype setting '%s'." % attr)
+            self.msg("Sorry, there is no gametype setting '%s'." % attr)
     
     @metadata(schema=(('char','selector'), ('cattr','attribute'), ('msg','value')))
     def com_setc(_self, self, args):
@@ -211,20 +222,20 @@ type of input, like an number or a single word. The attribute may be partial.
         attr = args['attribute']
         value = [args['value']]
         fields = []
-        for field, vtype in db.Character.vschema.iteritems():
+        for field, vtype in Character.vschema.iteritems():
             if field.startswith(attr):
                 fields.append(field)
 
         if len(fields) > 1:
-            self.player.tell("Possible attributes: " + ", ".join(fields))
+            self.msg("Possible attributes: " + ", ".join(fields))
         elif len(fields) == 1:
             try:
                 field = fields[0]
-                vtype = db.Character.vschema[field]
+                vtype = Character.vschema[field]
                 validator = validators[vtype]
                 val, left = validator(self.app, field, value)
             except validation.ValidationError, e:
-                self.player.tell(e.message)
+                self.msg(e.message)
             else:
                 if field == 'selector':
                     char.change_selector(val)
@@ -243,14 +254,14 @@ type of input, like an number or a single word. The attribute may be partial.
                     if field != 'mdefense': newtotal += char.mdefense
                     
                     if max < newtotal:
-                        self.player.tell(
+                        self.msg(
                         "Sorry, this character only has %d points left." % left)
                         return
                     elif val > MAX_CHAR_STAT:
-                        self.player.tell(                        "The maximum value is %d. '%s' not changed." % (MAX_CHAR_STAT, field))
+                        self.msg(                        "The maximum value is %d. '%s' not changed." % (MAX_CHAR_STAT, field))
                         return
                     elif val < MIN_CHAR_STAT:
-                        self.player.tell("The minimum value is %d. '%s' Not changed." % (MIN_CHAR_STAT, field))
+                        self.msg("The minimum value is %d. '%s' Not changed." % (MIN_CHAR_STAT, field))
                         return
                 setattr(char, field, val)
                 if field != 'finalized':
@@ -258,7 +269,7 @@ type of input, like an number or a single word. The attribute may be partial.
                 args['filters'] = attr
                 _self.com_lsc(self, args)
         else:
-            self.player.tell("Sorry, there is no character attribute '%s'." % attr)
+            self.msg("Sorry, there is no character attribute '%s'." % attr)
        
         
     @metadata(schema=(('char', 'pselector'), ('move','mselector'), ('mattr', 'attribute'), ('msg', 'value')))
@@ -286,22 +297,22 @@ attribute may be partial.
             attr = args['attribute']
             value = [args['value']]
             fields = []
-            for field, vtype in db.Move.vschema.iteritems():
+            for field, vtype in Move.vschema.iteritems():
                 if field.startswith(attr):
                     fields.append(field)
             if len(fields) > 1:
-                self.player.tell("Possible attributes: " + ", ".join(fields))
+                self.msg("Possible attributes: " + ", ".join(fields))
             elif len(fields) == 1:
                 try:
                     field = fields[0]
-                    vtype = db.Move.vschema[field]
+                    vtype = Move.vschema[field]
                     validator = validators[vtype]
                     val, left = validator(self.app, field, value)
                 except validation.ValidationError, e:
-                    self.player.tell(e.message)
+                    self.msg(e.message)
                     if 'element'.startswith(attr):
-                        self.player.tell("Possible elements are:")
-                        self.player.tell(", ".join(validation.elements))
+                        self.msg("Possible elements are:")
+                        self.msg(", ".join(validation.elements))
                 else:
                     # Additional validation
 #                    if 'element'.startswith(attr):

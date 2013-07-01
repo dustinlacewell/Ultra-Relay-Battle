@@ -18,12 +18,11 @@
     form the validated value.
     """
 from urb.commands import get_name
-from urb.constants import elements
+from urb.characters.choices import ELEMENTS
 from urb import contexts
 from urb.players.models import Player
 from urb.characters.models import Character, Move
-from urb.gametypes.models import GameType
-from urb.util import dlog, dtrace
+from urb.util import dlog, dtrace, slug_to_int, int_to_slug
 
 class ValidationError(Exception):
     def __init__(self, message, validator, choices=[]):
@@ -66,39 +65,51 @@ def string(app, name, argsleft):
 def element(app, name, argsleft):
     """Validate argument to an element."""
     etype = argsleft.pop(0)
+    elements = [e[0] for e in ELEMENTS]
     if etype not in elements:    
         choices = [e for e in elements if e.startswith(etype)]
         raise ValidationError("'%s' is not a valid element." % etype, element, choices)
     else:
         return etype, argsleft
     
-def user(app, name, argsleft):
-    """Validate argument to an existing user."""
-    nick = argsleft.pop(0)
+def game(app, name, argsleft):
+    """Validate argument to an open game."""
+    game_slug = argsleft.pop(0)
     try: 
-        user = User.objects.get(username=nick)
-        return user, argsleft
-    except User.DoesNotExist:
-        choices = User.objects.filter(username__startswith=nick)
-        raise ValidationError("'%s' is not a valid user." % nick, user, choices)
+        _game = app.games[slug_to_int(game_slug)]
+        return _game, argsleft
+    except (KeyError, TypeError):
+        choices = [k for k in app.games if k.startswith(game_slug)]
+        raise ValidationError("'%s' is not an available game." % game_slug, game, choices)
         
-def player(app, record, name, argsleft):
-    """Validate argument to a logged on player."""
-    nick = argsleft.pop(0)
+def gametype(app, name, argsleft):
+    """Validate argument to an open game."""
+    game_type = argsleft.pop(0)
     try: 
-        player = Player.objects.get(game=record, 
-                                    user__username=nick)
-        return plrobj, argsleft
+        _game_type = GameType.objects.get(selector=game_type)
+        return _game, argsleft
+    except GameType.DoesNotExist:
+        choices = GameType.objects.filter(selector__startswith=game_type)
+        raise ValidationError("'%s' is not an available game." % game_type, gametype, choices)
+        
+def player(app, name, argsleft):
+    """Validate argument to a logged on player."""
+    username = argsleft.pop(0)
+    try: 
+        _player = Player.objects.get(username=username)
+        return _player, argsleft
     except Player.DoesNotExist:
-        choices = Player.objects.filter(game=record, 
-                                        user__username__startswith=nick)
-        raise ValidationError("'%s' is not currently signed on." % nick, player, choices)
+        choices = Player.objects.filter(
+            username__startswith=username,
+        )
+        raise ValidationError("'%s' is not currently signed on." % username, player, choices)
         
 def character(app, name, argsleft):
     """Validate argument to an existing character."""
     selector = argsleft.pop(0)
     try: 
-        character = Character.objects.get(selector=selector)
+        _character = Character.objects.get(selector=selector)
+        return _character, argsleft
     except Character.DoesNotExist:
         choices = Character.objects.filter(selector__startswith=selector)
         raise ValidationError("'%s' is not a valid character selector." % selector, character, choices)
@@ -139,6 +150,8 @@ def mattr(app, name, argsleft):
         
 def gametype(app, name, argsleft):
     """Validate argument to an existing gametype."""
+    from urb.gametypes.models import GameType
+
     selector = argsleft.pop(0)
     try: 
         gt = GameType.objects.get(selector=selector)
@@ -149,6 +162,8 @@ def gametype(app, name, argsleft):
     
 def gattr(app, name, argsleft):
     """Validate argument to an attribute on a gametype."""
+    from urb.gametypes.models import GameType
+
     attrname = argsleft.pop(0)
     if attrname in GameType.vorder:
         return attrname, argsleft
@@ -164,7 +179,7 @@ types = {
         'str':string, 
         'msg':message, 
         
-        'user':user, 
+        'game':game,
         'player':player,
         'char':character, 'cattr':cattr,
         'move':move, 'mattr':mattr,
@@ -217,7 +232,7 @@ def command(app, comobj, arguments, player=None):
                     if last_vchar and rawtype == 'move':
                         validated[name], argsleft = vfunc(app, name, argsleft, char=last_vchar)
                     elif rawtype == 'char':
-                        validated[name], argsleft = vfunc(app, name, argsleft, player=player)
+                        validated[name], argsleft = vfunc(app, name, argsleft)
                     else:
                         validated[name], argsleft = vfunc(app, name, argsleft)
                     if rawtype == 'char':

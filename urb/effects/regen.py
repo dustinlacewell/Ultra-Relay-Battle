@@ -29,15 +29,14 @@ class RegenEffect(StatusEffect):
 	"{t} is slightly regenerated. [{h}]",
     ]
 
-    def __init__(self, app, source, move, target):
-	super(RegenEffect, self).__init__(app, source, move, target)
-	self.total_health = 0
-
-    def on_hit(self):
-	if self.target.health <= self.app.game.settings.maxhealth:
-	    self.random_hit_msg(h=self.regenamt)
-	self.total_health += self.regenamt
-	self.target.health = min(self.target.health + self.regenamt, self.app.game.settings.maxhealth)
+    def on_hit(self, game):
+    	if self.target.hp <= game.gametype.maxhealth:
+    	    self.hit_msg(h=self.regenamt)
+    	self.total_healing += self.regenamt
+    	self.target.hp = min(
+            self.target.hp + self.regenamt, 
+            game.gametype.maxhealth,
+        )
         return {'h':self.regenamt}
 
 exported_class = RegenEffect

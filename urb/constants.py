@@ -55,10 +55,10 @@ def is_critical(st, df):
     chance = challenge_factor(st, df) * 10
     return (random.random() * 100) <= chance 
 
+COUNTDOWN = 25
 
 #
 # Elements
 #
-elements = ['physical', 'heal', 'hpdrain', 'spdrain', 'reveal', 'demi']
 
 MAX_DEMI_RATIO = 0.95

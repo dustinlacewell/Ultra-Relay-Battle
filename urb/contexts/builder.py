@@ -35,10 +35,14 @@ http://ldlework.com/wiki/urb/building
 Create a new character.
 """
         selector = unicode(args['selector'])
-        char = Character.objects.create(selector=selector)
-        if char:
+        created, char = Character.objects.get_or_create(
+            selector=selector
+        )
+        if created:
             self.msg("'%s' character succesfully created." % args['selector'])
-            _self.working = char
+        else:
+            self.msg("'%s' character already exists." % selector)
+        _self.working = char
             
     @metadata(schema=(('char','character'), ('str', 'selector')))
     def com_mkmove(_self, self, args):
@@ -47,34 +51,36 @@ Create a new character move.
 """
         char = args['character']
         selector = unicode(args['selector'])
-        move = Move.objects.create(
+        created, move = Move.objects.get_or_create(
             selector=selector, 
             character=Character.objects.get(
                 selector=char.selector
             ),
         )
-        if move:
+        if created:
             self.msg("'%s' move successfully created for '%s'." % (selector, char.selector))
-            _self.working = char
+        else:
+            self.msg("'%s' move already exists for %s" % (selector, char.selector))
+        _self.working = char
     
     @metadata(adminlevel=100, schema=(('char', 'selector'), ))
     def com_rmchar(_self, self, args):
         """
 Permanently delete character.
 """
-        Character.objects.get(
-            selector=args['selector'].selector
-        ).delete()
-            
+        char = args['selector']
+        char.delete()
+        self.msg("'%s' has been deleted." % char.selector)
+
+
     @metadata(adminlevel=100, schema=(('char', 'cselector'), ('move', 'mselector'),))
     def com_rmmove(_self, self, args):
         """
 Permanently delete a character move.
 """
-        Move.get(
-            character=args['cselector'].selector, 
-            selector=args['mselector'].selector
-        ).delete()
+        move = args['mselector']
+        move.delete()
+        self.msg("'%s' has been deleted." % move.selector)
             
     @metadata(schema=(('char','selector'), ('msg*','filters')))
     def com_lsc(_self, self, args):
@@ -263,7 +269,12 @@ type of input, like an number or a single word. The attribute may be partial.
                     elif val < MIN_CHAR_STAT:
                         self.msg("The minimum value is %d. '%s' Not changed." % (MIN_CHAR_STAT, field))
                         return
-                setattr(char, field, val)
+                try:
+                    setattr(char, field, val)
+                except AttributeError:
+                    import pdb; pdb.set_trace()
+                    print char, field, val
+                char.save()
                 if field != 'finalized':
                     char.finalized = 0
                 args['filters'] = attr

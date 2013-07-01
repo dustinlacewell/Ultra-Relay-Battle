@@ -32,9 +32,24 @@ class Character(models.Model):
         max_length=32, choices=ELEMENTS,
     )
 
-    # effects = MultiSelectField(choices=EFFECTS)
+    apply_blind = models.BooleanField(default=False)
+    apply_poison = models.BooleanField(default=False)
+    apply_regen = models.BooleanField(default=False)
+    apply_stun = models.BooleanField(default=False)
 
     finalized = models.BooleanField(default=False)
+
+    def get_effects(self):
+        effects = []
+        for attr in [
+            a for a in dir(self) 
+            if a.startswith('apply_')]:
+                val = getattr(self, attr)
+                if val:
+                    name = attr.split('_')[-1]
+                    effects.append(name)
+        return effects
+    effects = property(get_effects)
 
     def _get_moves(self):
         return Move.objects.filter(character=self)

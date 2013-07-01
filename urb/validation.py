@@ -132,7 +132,7 @@ def move(app, name, argsleft, char_selector=None):
         kwargs['character'] = char
     moves = Move.objects.filter(**kwargs)
     if len(moves):
-        return moves, argsleft
+        return moves[0], argsleft
     else:
         del kwargs['selector']
         kwargs['selector__startswith'] = selector
@@ -230,7 +230,7 @@ def command(app, comobj, arguments, player=None):
                     vfunc = types[rawtype]
                     # store valid arg and remaining args
                     if last_vchar and rawtype == 'move':
-                        validated[name], argsleft = vfunc(app, name, argsleft, char=last_vchar)
+                        validated[name], argsleft = vfunc(app, name, argsleft, char_selector=last_vchar.selector)
                     elif rawtype == 'char':
                         validated[name], argsleft = vfunc(app, name, argsleft)
                     else:

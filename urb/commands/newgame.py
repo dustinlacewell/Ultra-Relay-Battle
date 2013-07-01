@@ -33,4 +33,4 @@ Create a new game lobby.
                     self.session.msg(msg)
             else:
                 self.session.msg("There are no available games.")
-exported_class = FightCommand
+exported_class = NewGameCommand

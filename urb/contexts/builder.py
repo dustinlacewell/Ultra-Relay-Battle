@@ -272,7 +272,6 @@ type of input, like an number or a single word. The attribute may be partial.
                 try:
                     setattr(char, field, val)
                 except AttributeError:
-                    import pdb; pdb.set_trace()
                     print char, field, val
                 char.save()
                 if field != 'finalized':

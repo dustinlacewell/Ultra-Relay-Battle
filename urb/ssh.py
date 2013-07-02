@@ -46,6 +46,61 @@ from twisted.conch.manhole_ssh import (ConchFactory, TerminalRealm,
 
 from twisted.python.components import Componentized, Adapter
 
+from twisted.python import failure, log
+from twisted.cred import portal, checkers, error, credentials
+from twisted.internet import defer
+
+from django.contrib.auth.models import check_password
+
+from urb.players.models import Player
+
+class DjangoAuthChecker:
+    implements(checkers.ICredentialsChecker)
+    credentialInterfaces = (credentials.IUsernamePassword,
+                            credentials.IUsernameHashedPassword)
+
+    def _passwordMatch(self, matched, user):
+        if matched:
+            return user
+        else:
+            return failure.Failure(error.UnauthorizedLogin())
+
+    def requestAvatarId(self, credentials):
+        if credentials.username.lower() == 'register':
+            return defer.maybeDeferred(
+                lambda u,p: True,
+                credentials.password,
+                None).addCallback(self._passwordMatch, None)
+
+        try:
+            player = Player.objects.get(username=credentials.username)
+            return defer.maybeDeferred(
+                check_password,
+                credentials.password,
+                player.password).addCallback(self._passwordMatch, player)
+        except Player.DoesNotExist:
+            return defer.fail(error.UnauthorizedLogin())
+
+class RegistrationAuthChecker:
+    implements(checkers.ICredentialsChecker)
+    credentialInterfaces = (credentials.IUsernamePassword,
+                            credentials.IUsernameHashedPassword)
+
+    def _passwordMatch(self, matched, user):
+        if matched:
+            return user
+        else:
+            return failure.Failure(error.UnauthorizedLogin())
+
+    def requestAvatarId(self, credentials):
+        try:
+            player = Player.objects.get(username=credentials.username)
+            return defer.maybeDeferred(
+                check_password,
+                credentials.password,
+                player.password).addCallback(self._passwordMatch, player)
+        except Player.DoesNotExist:
+            return defer.fail(error.UnauthorizedLogin())
 
 
 class IUrwidUi(Interface):
@@ -78,9 +133,6 @@ class IUrwidMind(Interface):
 
     def draw():
         """Refresh the UI"""
-
-
-
 
 class UrwidUi(object):
 
@@ -435,6 +487,31 @@ class UrwidRealm(TerminalRealm):
                         lambda: None)
         raise NotImplementedError()
 
+from twisted.cred import credentials
+from twisted.conch.manhole_ssh import ConchFactory
+from twisted.conch.ssh import userauth, connection
+from twisted.conch import error, interfaces
+
+class SSHClearAuthServer(userauth.SSHUserAuthServer):
+#     interfaceToMethod = {
+# #        credentials.IUsernamePassword : 'none',
+#         credentials.ISSHPrivateKey : 'publickey',
+#         credentials.IUsernamePassword : 'password',
+#         credentials.IPluggableAuthenticationModules : 'keyboard-interactive',
+#     }    
+
+    def tryAuth(self, kind, user, data):
+        import pdb; pdb.set_trace()
+        if user.lower() == 'register':
+            c = credentials.UsernamePassword(user, None)
+            return self.portal.login(c, None, interfaces.IConchUser).addErrback(self._ebPassword)        
+        userauth.SSHUserAuthServer.tryAuth(self, kind, user, data)
+
+class CustomSSHFactory(ConchFactory):
+    services = {
+        'ssh-userauth':SSHClearAuthServer,
+        'ssh-connection':connection.SSHConnection
+    }    
 
 def create_server_factory(urwid_mind_factory, app):
     """Convenience to create a server factory with a portal that uses a realm
@@ -442,7 +519,7 @@ def create_server_factory(urwid_mind_factory, app):
     """
     rlm = UrwidRealm(urwid_mind_factory, app)
     ptl = Portal(rlm, urwid_mind_factory.cred_checkers)
-    return ConchFactory(ptl)
+    return CustomSSHFactory(ptl)
 
 
 def create_service(app):
@@ -575,10 +652,13 @@ Ultra Relay Battle - v 1.0
         fill = CustomFiller(self.output, valign='bottom')
         return fill
 
-
-
-
 class SSHMind(UrwidMind):
     ui_factory = SSHWidget
-    cred_checkers = [InMemoryUsernamePasswordDatabaseDontUse(user='pw')]
+    cred_checkers = [DjangoAuthChecker()]
+
+    def login(self, credentials, mind, *interfaces):
+        import pdb; pdb.set_trace()
+        print "wtf"
+        super(SSHMind, self).login(credentials, mind, *interfaces)
+
 

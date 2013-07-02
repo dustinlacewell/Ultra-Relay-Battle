@@ -9,7 +9,7 @@ from twisted.python.logfile import LogFile
 FileLogObserver.timeFormat = ""
 
 # initialize URB Application
-from urb import app, irc, telnet
+from urb import app, irc, telnet, ssh
 # from urb.web import twresource
 
 myApp = app.ApplicationClass()
@@ -20,4 +20,4 @@ application = service.Application("URB")
 myApp.application = application
 myApp.add_service(telnet.TelnetService)
 # myApp.add_service(twresource.DjangoService)
-
+myApp.add_service(ssh.SSHService)

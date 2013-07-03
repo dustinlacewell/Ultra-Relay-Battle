@@ -8,7 +8,7 @@ from zope.interface import Interface, Attribute, implements
 from django.contrib.auth.models import check_password
 
 from urb.players.models import Player
-from urb.ui.interfaces import IUrwidMind
+from urb.ui.core.interfaces import IUrwidMind
 from urb.ui.manager import UrwidUI
 
 class DjangoAuthChecker:

@@ -5,8 +5,8 @@ from twisted.conch.ssh import userauth, connection
 from twisted.conch import error, interfaces
 from twisted.conch.manhole_ssh import ConchFactory
 
-from urb.ui.mind import UrwidMind
-from urb.ui.realm import UrwidRealm
+from urb.ui.core.mind import UrwidMind
+from urb.ui.core.realm import UrwidRealm
 
 
 class SSHClearAuthServer(userauth.SSHUserAuthServer):

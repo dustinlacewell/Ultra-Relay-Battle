@@ -6,8 +6,8 @@ from twisted.conch.manhole_ssh import (
     TerminalSession, TerminalSessionTransport
 )
 
-from urb.ui.interfaces import IUrwidMind, IUrwidUI
-from urb.ui.terminal import UrwidTerminalProtocol
+from urb.ui.core.interfaces import IUrwidMind, IUrwidUI
+from urb.ui.core.terminal import UrwidTerminalProtocol
 
 class UrwidServerProtocol(ServerProtocol):
     def dataReceived(self, data):

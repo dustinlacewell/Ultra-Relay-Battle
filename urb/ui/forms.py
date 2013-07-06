@@ -47,8 +47,11 @@ class UrwidForm(UrwidScreen):
         label = urwid.Text(labeltext)
         colon = urwid.Text(': ')
 
-        if fieldtype == 'text':
-            field = urwid.Edit('', '')
+        if fieldtype.startswith('text'):
+            if '*' in fieldtype:
+                field = urwid.Edit('', '', mask='*')
+            else:
+                field = urwid.Edit('', '')
             def getter():
                 """ 
                 Closure around urwid.Edit.get_edit_text(), which we'll
@@ -103,10 +106,13 @@ class UrwidForm(UrwidScreen):
     def get_body(self):
         """ the body of our form, called from main() """
         # build the list of field widgets
-        fieldset = self.get_fields()
+        fields = self.get_fields()
         fieldwidgets = []
-        for (label, inputname, fieldtype) in fieldset:
-            fieldwidgets.append(self.get_field(label, inputname, fieldtype, self.fieldmgr))
+        for (header, fieldset) in fields:
+            if header:
+                fieldwidgets.append(urwid.Text(header))
+            for (label, inputname, fieldtype) in fieldset:
+                fieldwidgets.append(self.get_field(label, inputname, fieldtype, self.fieldmgr))
 
         fieldwidgets.append(self.get_buttons())
 
@@ -118,11 +124,21 @@ class UrwidForm(UrwidScreen):
         return urwid.Pile(fieldwidgets)
 
 class RegisterForm(UrwidForm):
+
+    login_text = """
+
+Ultra Relay Battle v 1.0
+
+You appear ready for battle. Register below!
+"""
+
     def get_fields(self):
         return [
-            ('Username', 'username', 'text'),
-            ('Password', 'password', 'text'),
-            ('Emailisreallylonglabel here', 'email', 'text'),
+            (self.login_text, (
+                ('Username', 'username', 'text'),
+                ('Password', 'password', 'text*'),
+                ('Email', 'email', 'text'),
+            )),
         ]
 
     def pressed_ok(self, button):

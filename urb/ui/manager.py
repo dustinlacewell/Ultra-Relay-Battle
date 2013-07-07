@@ -10,9 +10,10 @@ class UrwidUI(object):
         self.app = app
         self.session = None
         self.mind = mind
-        self.toplevel = self.create_urwid_toplevel()
-        self.palette = self.create_urwid_palette()
         self.screen = TwistedScreen(self.mind.terminalProtocol)
+        self.toplevel = self.create_urwid_toplevel()
+        self.stack = [self.toplevel]
+        self.palette = self.create_urwid_palette()
         self.loop = self.create_urwid_mainloop()
 
     def msg(self, message):
@@ -33,8 +34,17 @@ class UrwidUI(object):
         return
 
     def create_urwid_toplevel(self):
-        return urwid.LineBox(RegisterForm(self.app, self.session, self))
-        #return UrwidConsole(self.app, self.session, self)
+        return RegisterForm(self.app, self.session, self)
+        # return UrwidConsole(self.app, self.session, self)
 
     def set_urwid_toplevel(self, widget):
         self.loop.widget = widget
+
+    def push_urwid_toplevel(self, widget):
+        self.stack.append(widget)
+        self.set_urwid_toplevel(widget)
+
+    def pop_urwid_toplevel(self):
+        if len(self.stack) > 1:
+            self.stack.pop()
+            self.set_urwid_toplevel(self.stack[-1])

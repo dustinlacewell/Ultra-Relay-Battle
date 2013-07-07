@@ -4,7 +4,6 @@ from urb.ui.screen import UrwidScreen
 
 class UrwidConsole(UrwidScreen):
     def __init__(self, *args, **kwargs):
-        kwargs['height'] = 'flow'
         super(UrwidConsole, self).__init__(*args, **kwargs)
         self.reset_tab()
 
@@ -17,16 +16,16 @@ class UrwidConsole(UrwidScreen):
             self.reset_tab()
 
     def msg(self, message):
-        self.output.contents.insert(-1, (urwid.Text(
-            message,
-        ), ('pack', None)))
-        self.adapter.height += 1
+        self.output.insert(-1, urwid.Text(message))
+        self.items.set_focus(len(self.output) - 1)
 
     def get_body(self):
         self.input = urwid.Edit(u"> ")
-        self.output = urwid.SimpleListWalker([self.input])
-        self.adapter = urwid.BoxAdapter(urwid.ListBox(self.output), 1)
-        return self.output
+        padding = urwid.Text('\n' * self.ui.screen.get_cols_rows()[1] * 2)
+        self.output = urwid.SimpleFocusListWalker([padding, self.input])
+        self.items = urwid.ListBox(self.output)
+        self.items.set_focus(len(self.output) - 1)
+        return self.items
 
     def handle_ENTER(self, size, key):
         if self.input.edit_text:

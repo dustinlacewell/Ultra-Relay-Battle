@@ -60,8 +60,8 @@ class UrwidRealm(TerminalRealm):
         comp = Componentized()
         user = UrwidUser(comp, avatarId)
         comp.setComponent(IConchUser, user)
-        sess = UrwidTerminalSession(comp)
-        comp.setComponent(ISession, sess)
+        self.sess = UrwidTerminalSession(comp)
+        comp.setComponent(ISession, self.sess)
         mind = self.mind_factory(comp, app=self.app)
         comp.setComponent(IUrwidMind, mind)
         return user
